@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --fg: #111827;
+  --muted: #566070;
+  --line: #dfe3e8;
+  --brand: #0f766e;
+  --brand-hover: #0b5f58;
+  --brand-fg: #ffffff;
+  --brand-soft: #e3f3f1;
+  --danger: #b42318;
+  --danger-hover: #912018;
+  --danger-soft: #fdecea;
+  --warn: #8a5a00;
+  --warn-soft: #fff1cf;
+  --ok: #146c43;
+  --ok-soft: #e1f3e8;
+  --focus: #1d4ed8;
+  --ai: #6d28d9;
+  --ai-soft: #f1eafe;
+  --chart-1: #0f766e;
+  --chart-2: #b45309;
+  --chart-3: #1d4ed8;
+  --chart-4: #9d174d;
+  --chart-5: #4d7c0f;
+  --chart-6: #6d28d9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #151b23;
+    --surface-2: #1c242e;
+    --fg: #e7eaee;
+    --muted: #9ba5b3;
+    --line: #2a333e;
+    --brand: #2dd4bf;
+    --brand-hover: #5eead4;
+    --brand-fg: #04211e;
+    --brand-soft: #0f2d2a;
+    --danger: #f97066;
+    --danger-hover: #fda29b;
+    --danger-soft: #3a1714;
+    --warn: #fdb022;
+    --warn-soft: #3a2a08;
+    --ok: #4ade80;
+    --ok-soft: #10301c;
+    --focus: #60a5fa;
+    --ai: #c4b5fd;
+    --ai-soft: #231a3d;
+    --chart-1: #2dd4bf;
+    --chart-2: #fbbf24;
+    --chart-3: #60a5fa;
+    --chart-4: #f472b6;
+    --chart-5: #a3e635;
+    --chart-6: #c4b5fd;
+  }
+}
+
+@theme inline {
+  --font-sans:
+    "Vazirmatn Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-soft: var(--brand-soft);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-focus: var(--focus);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Native <dialog> backdrop */
+dialog::backdrop {
+  background: rgb(10 14 20 / 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
