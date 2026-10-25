@@ -131,3 +131,54 @@ test.describe("back office", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 });
+
+test.describe("every page renders against the mock API", () => {
+  const SCHEME_PAGES = [
+    "",
+    "/imports",
+    "/expenses",
+    "/expenses?tab=flags",
+    "/arrears",
+    "/arrears?tab=risk",
+    "/arrears?tab=actions",
+    "/arrears?tab=settings",
+    "/capital-works",
+    "/capital-works?tab=scenarios",
+    "/ai-review",
+    "/ai-review?tab=suggestions",
+    "/reports",
+    "/feedback",
+  ];
+  const BACKOFFICE_PAGES = [
+    "/backoffice",
+    "/backoffice/schemes",
+    "/backoffice/schemes/1",
+    "/backoffice/users",
+    "/backoffice/access-log",
+    "/backoffice/pilot",
+  ];
+
+  async function expectRenders(page: Page, path: string) {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+    expect(errors, `uncaught errors on ${path}`).toEqual([]);
+  }
+
+  test("client pages for both markets", async ({ page }) => {
+    test.setTimeout(120_000);
+    await clientSignIn(page, RESIDENT_PHONE);
+    await expect(page).toHaveURL(/\/schemes/);
+    for (const id of [1, 2]) {
+      for (const path of SCHEME_PAGES) await expectRenders(page, `/schemes/${id}${path}`);
+    }
+  });
+
+  test("back-office pages", async ({ page }) => {
+    await backofficeSignIn(page, ADMIN_PHONE);
+    await expect(page).not.toHaveURL(/\/login/);
+    for (const path of BACKOFFICE_PAGES) await expectRenders(page, path);
+  });
+});
