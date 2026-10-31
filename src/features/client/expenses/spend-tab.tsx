@@ -21,6 +21,7 @@ import type { Comparison, SpendBreakdownItem } from "@/lib/api/finance/types";
 import { qk } from "@/lib/api/keys";
 import { isRangeOrdered, lastMonthsRange, todayIso } from "@/lib/region/dates";
 import { isGuid } from "@/lib/scheme-id";
+import { RecordHistoryButton } from "../records/record-history";
 import { useScheme } from "../workspace/scheme-provider";
 import { useLookups } from "./lookups";
 
@@ -313,6 +314,9 @@ function RecordsCard({
                   <TH>{t("expenses.colCategory")}</TH>
                   <TH>{t("expenses.colAmount")}</TH>
                   <TH>{t("expenses.colStatus")}</TH>
+                  <TH>
+                    <span className="sr-only">{t("history.open")}</span>
+                  </TH>
                 </TR>
               </THead>
               <TBody>
@@ -329,6 +333,9 @@ function RecordsCard({
                     </TD>
                     <TD>
                       <EnumBadge group="recordStatus" value={r.status} />
+                    </TD>
+                    <TD className="text-end">
+                      <RecordHistoryButton recordId={r.id} />
                     </TD>
                   </TR>
                 ))}

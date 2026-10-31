@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 const ADMIN_PHONE = "+989120000000";
 const RESIDENT_PHONE = "+989121111111";
+const TREASURER_PHONE = "+61400000002";
+const ANALYST_PHONE = "+61400000003";
 
 test.beforeEach(async ({ context }) => {
   await context.addCookies([{ name: "alohome-locale", value: "en", url: "http://127.0.0.1:3100" }]);
@@ -141,12 +143,22 @@ test.describe("every page renders against the mock API", () => {
     "/arrears",
     "/arrears?tab=risk",
     "/arrears?tab=actions",
+    "/arrears?tab=reminders",
     "/arrears?tab=settings",
     "/capital-works",
     "/capital-works?tab=scenarios",
     "/ai-review",
     "/ai-review?tab=suggestions",
+    "/ai-review?tab=documents",
+    "/ai-review?tab=ask",
     "/reports",
+    "/budgets",
+    "/budgets?tab=actual",
+    "/budgets?tab=variance",
+    "/property",
+    "/property?tab=committee",
+    "/audit",
+    "/glossary",
     "/feedback",
   ];
   const BACKOFFICE_PAGES = [
@@ -156,6 +168,12 @@ test.describe("every page renders against the mock API", () => {
     "/backoffice/users",
     "/backoffice/access-log",
     "/backoffice/pilot",
+    "/backoffice/schemes/1?tab=case-study",
+    "/backoffice/organisations",
+    "/backoffice/organisations/1",
+    "/backoffice/audit-log",
+    "/backoffice/evidence",
+    "/backoffice/product",
   ];
 
   async function expectRenders(page: Page, path: string) {
@@ -174,11 +192,88 @@ test.describe("every page renders against the mock API", () => {
     for (const id of [1, 2]) {
       for (const path of SCHEME_PAGES) await expectRenders(page, `/schemes/${id}${path}`);
     }
+    await expectRenders(page, "/schemes/portfolio");
   });
 
   test("back-office pages", async ({ page }) => {
     await backofficeSignIn(page, ADMIN_PHONE);
     await expect(page).not.toHaveURL(/\/login/);
     for (const path of BACKOFFICE_PAGES) await expectRenders(page, path);
+  });
+});
+
+/** Signs in and waits for the scheme picker, so a following goto isn't overtaken by the redirect. */
+async function signedIn(page: Page, phone: string) {
+  await clientSignIn(page, phone);
+  await page.waitForURL(/\/schemes$/);
+}
+
+test.describe("post-MVP journeys", () => {
+  test("a manager approves the draft budget", async ({ page }) => {
+    await signedIn(page, "+61411111111");
+    await page.goto("/schemes/1/budgets");
+    await page.getByRole("button", { name: /Mid-year revision/ }).click();
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
+    await page.getByLabel("Approval reference").fill("Committee meeting, motion 2");
+    await page.getByRole("dialog").getByRole("button", { name: "Approve", exact: true }).click();
+    await page
+      .getByRole("dialog", { name: /Approve “Mid-year revision”/ })
+      .getByRole("button", { name: "Approve", exact: true })
+      .click();
+    await expect(page.getByText("Budget approved.")).toBeVisible();
+  });
+
+  test("reminders need a second person to approve them", async ({ page }) => {
+    // The seeded batch was drafted by the treasurer.
+    await signedIn(page, TREASURER_PHONE);
+    await page.goto("/schemes/1/arrears?tab=reminders");
+    await page.getByRole("button", { name: "Approve and send" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Approve and send" }).click();
+    await expect(page.getByText(/someone else must approve it/)).toBeVisible();
+
+    await page.context().clearCookies();
+    await page
+      .context()
+      .addCookies([{ name: "alohome-locale", value: "en", url: "http://127.0.0.1:3100" }]);
+    await signedIn(page, "+61411111111");
+    await page.goto("/schemes/1/arrears?tab=reminders");
+    await page.getByRole("button", { name: "Approve and send" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Approve and send" }).click();
+    await expect(page.getByText("Batch approved. Reminders are on their way.")).toBeVisible();
+  });
+
+  test("a question is answered from verified data", async ({ page }) => {
+    await signedIn(page, "+61411111111");
+    await page.goto("/schemes/1/ai-review?tab=ask");
+    await page.getByLabel("Your question").fill("Who are our top suppliers this year?");
+    await page.getByRole("button", { name: "Ask", exact: true }).click();
+    await expect(page.getByText("Answered", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Records used/ })).toBeVisible();
+  });
+
+  test("ownership transfer requires shares that add up to 100%", async ({ page }) => {
+    await signedIn(page, "+61411111111");
+    await page.goto("/schemes/1/property");
+    await page.getByRole("button", { name: "Owners and history" }).nth(3).click();
+    await page.getByRole("button", { name: "Transfer ownership" }).click();
+    await page.getByLabel("Effective date").fill("2026-10-15");
+    await page.getByLabel("Name or user ID").fill("New Owner");
+    await page.getByLabel("Share %").fill("90");
+    await page.getByRole("button", { name: "Review transfer" }).click();
+    await expect(page.getByText("Total 90%")).toBeVisible();
+    await page.getByLabel("Share %").fill("100");
+    await page.getByRole("button", { name: "Review transfer" }).click();
+    await expect(page.getByRole("heading", { name: "Record this transfer?" })).toBeVisible();
+  });
+
+  test("an analyst can view but not change data or see the audit log", async ({ page }) => {
+    await signedIn(page, ANALYST_PHONE);
+    await page.goto("/schemes/1");
+    await expect(page.getByText("Your role: Analyst")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Audit log" })).toHaveCount(0);
+    await page.goto("/schemes/1/audit");
+    await expect(page.getByText("Your role can't view the audit log")).toBeVisible();
+    await page.goto("/schemes/1/budgets");
+    await expect(page.getByRole("button", { name: "New budget" })).toHaveCount(0);
   });
 });

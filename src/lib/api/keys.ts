@@ -57,6 +57,40 @@ export const qk = {
   report: (id: number, reportId: string) => ["scheme", id, "reports", reportId] as const,
   feedback: (id: number, params: object) => ["scheme", id, "feedback", params] as const,
 
+  property: (id: number) => ["scheme", id, "property"] as const,
+  tenures: (id: number, lotId: number) => ["scheme", id, "property", "tenures", lotId] as const,
+  holders: (id: number, lotId: number, asOf: string) =>
+    ["scheme", id, "property", "holders", lotId, asOf] as const,
+  officeHolders: (id: number, includeEnded: boolean) =>
+    ["scheme", id, "property", "offices", includeEnded] as const,
+  audit: (id: number, params: object) => ["scheme", id, "audit", params] as const,
+  recordHistory: (id: number, recordId: string) =>
+    ["scheme", id, "records", "history", recordId] as const,
+
+  budgets: (id: number) => ["scheme", id, "budgets"] as const,
+  budgetList: (id: number) => ["scheme", id, "budgets", "list"] as const,
+  budget: (id: number, budgetId: string) => ["scheme", id, "budgets", "one", budgetId] as const,
+  budgetVsActual: (id: number, params: object) =>
+    ["scheme", id, "budgets", "actual", params] as const,
+  budgetVariance: (id: number, params: object) =>
+    ["scheme", id, "budgets", "variance", params] as const,
+  committeePack: (id: number, params: object) =>
+    ["scheme", id, "reports", "committee", params] as const,
+
+  reminders: (id: number) => ["scheme", id, "arrears", "reminders"] as const,
+  reminder: (id: number, batchId: string) =>
+    ["scheme", id, "arrears", "reminders", batchId] as const,
+  contributionImpact: (id: number, scenarioId: string) =>
+    ["scheme", id, "capital", "impact", scenarioId] as const,
+
+  extractions: (id: number) => ["scheme", id, "ai", "extractions"] as const,
+  onboarding: (id: number) => ["scheme", id, "onboarding"] as const,
+  dictionary: (jurisdiction: string, locale: string) =>
+    ["product", "dictionary", jurisdiction, locale] as const,
+  governance: ["product", "governance"] as const,
+  myOrganisations: ["organisations", "mine"] as const,
+  portfolio: (organisationId: number | null) => ["portfolio", organisationId] as const,
+
   bo: {
     schemes: (params: object) => ["bo", "schemes", params] as const,
     scheme: (id: number) => ["bo", "scheme", id] as const,
@@ -65,5 +99,13 @@ export const qk = {
     audit: (params: object) => ["bo", "audit", params] as const,
     pilotMetrics: (id: number) => ["bo", "pilot", id] as const,
     pilotFeedback: (params: object) => ["bo", "pilot", "feedback", params] as const,
+    organisations: (params: object) => ["bo", "organisations", params] as const,
+    organisation: (id: number) => ["bo", "organisation", id] as const,
+    auditLog: (params: object) => ["bo", "audit-log", params] as const,
+    governance: ["bo", "governance"] as const,
+    evidence: (params: object) => ["bo", "evidence", params] as const,
+    caseStudy: (id: number) => ["bo", "scheme", id, "case-study"] as const,
+    agreements: (status: string) => ["bo", "pilot-agreements", status] as const,
+    agreementMetrics: ["bo", "pilot-agreements", "metrics"] as const,
   },
 };

@@ -18,11 +18,12 @@ import { qk } from "@/lib/api/keys";
 import { usePageView } from "@/lib/telemetry/client";
 import { cn } from "@/lib/utils";
 import { useBoMutation } from "../use-bo-mutation";
+import { CaseStudySection } from "./case-study-section";
 import { LotsSection } from "./lots-section";
 import { MembersSection } from "./members-section";
 import { SchemeForm } from "./scheme-form";
 
-const TABS = ["lots", "members", "details"] as const;
+const TABS = ["lots", "members", "details", "case-study"] as const;
 type Tab = (typeof TABS)[number];
 
 export function SchemeDetail({ schemeId }: { schemeId: number }) {
@@ -44,6 +45,7 @@ export function SchemeDetail({ schemeId }: { schemeId: number }) {
     lots: t("backoffice.tabLots"),
     members: t("backoffice.tabMembers"),
     details: t("backoffice.tabDetails"),
+    "case-study": t("caseStudy.tab"),
   };
 
   return (
@@ -76,6 +78,7 @@ export function SchemeDetail({ schemeId }: { schemeId: number }) {
       {tab === "lots" ? <LotsSection scheme={scheme} /> : null}
       {tab === "members" ? <MembersSection schemeId={schemeId} /> : null}
       {tab === "details" ? <DetailsSection scheme={scheme} /> : null}
+      {tab === "case-study" ? <CaseStudySection schemeId={schemeId} /> : null}
     </div>
   );
 }

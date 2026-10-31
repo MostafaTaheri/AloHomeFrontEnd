@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createTranslator } from "@/i18n/translator";
-import { ApiError, describeError, isRetryable, parseErrorBody } from "./error";
+import { ApiError, describeError, hasErrorCode, isRetryable, parseErrorBody } from "./error";
 
 const { t } = createTranslator("en");
 
@@ -81,5 +81,18 @@ describe("describeError status mapping", () => {
     expect(isRetryable(new ApiError(0, "Network", "x", []))).toBe(true);
     expect(isRetryable(new ApiError(503, "Unavailable", "x", []))).toBe(true);
     expect(isRetryable(new ApiError(404, "NotFound", "x", []))).toBe(false);
+  });
+});
+
+describe("hasErrorCode", () => {
+  it("matches the prefixed and the bare numeric code", () => {
+    expect(hasErrorCode(new ApiError(400, "App_AloHome_430010", "x"), 430010)).toBe(true);
+    expect(hasErrorCode(new ApiError(400, "430010", "x"), 430010)).toBe(true);
+  });
+
+  it("does not match a different code or a non-API error", () => {
+    expect(hasErrorCode(new ApiError(400, "App_AloHome_4300101", "x"), 430010)).toBe(false);
+    expect(hasErrorCode(new ApiError(400, null, "x"), 430010)).toBe(false);
+    expect(hasErrorCode(new Error("x"), 430010)).toBe(false);
   });
 });

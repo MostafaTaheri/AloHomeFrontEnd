@@ -1,7 +1,7 @@
 import { apiRequest } from "./client";
 import { asList, asPage, unwrap, type Page } from "./envelope";
 import { ActiveStatus, LotRole, SchemeRole } from "./finance/enums";
-import type { InsightFeedback, PilotMetrics } from "./finance/types";
+import type { InsightFeedback, PilotMetrics, SchemeRoleName } from "./finance/types";
 
 /** Back-office calls. They always go through the staff relay (/api/bo/backend). */
 const call = <T>(path: string, options: Parameters<typeof apiRequest>[1] = {}) =>
@@ -215,14 +215,14 @@ export const backofficeApi = {
     asPage<SchemeMember>(
       unwrap(await call(`backoffice/schemes/${schemeId}/members`, { signal, query: params })),
     ),
-  addMember: async (schemeId: number, input: { userId: string; role: "Manager" | "ReadOnly" }) =>
+  addMember: async (schemeId: number, input: { userId: string; role: SchemeRoleName }) =>
     unwrap<SchemeMember>(
       await call(`backoffice/schemes/${schemeId}/members`, {
         method: "POST",
         body: { userId: input.userId, role: SchemeRole.toNumber(input.role) },
       }),
     ),
-  changeMemberRole: async (schemeId: number, userId: string, role: "Manager" | "ReadOnly") =>
+  changeMemberRole: async (schemeId: number, userId: string, role: SchemeRoleName) =>
     unwrap<SchemeMember>(
       await call(`backoffice/schemes/${schemeId}/members/${userId}/role`, {
         method: "PUT",

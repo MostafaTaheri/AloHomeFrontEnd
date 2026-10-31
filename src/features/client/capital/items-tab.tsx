@@ -21,6 +21,7 @@ import { parseAmountInput } from "@/lib/format/amount";
 import { calendarParts, todayIso } from "@/lib/region/dates";
 import { useSchemeMutation } from "../use-scheme-mutation";
 import { useScheme } from "../workspace/scheme-provider";
+import { FundingSources } from "./funding-sources";
 import { parseYear, yearBounds } from "./parse";
 
 type Priority = "Low" | "Medium" | "High" | "Critical";
@@ -130,6 +131,7 @@ export function ItemsTab() {
                       </ul>
                     </details>
                   ) : null}
+                  <FundingSources item={item} />
                   {canWrite ? (
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="secondary" onClick={() => setEditing(item)}>

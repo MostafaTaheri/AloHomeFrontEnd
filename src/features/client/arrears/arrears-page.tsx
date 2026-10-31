@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils";
 import { useScheme } from "../workspace/scheme-provider";
 import { ActionsTab } from "./actions-tab";
 import { OverviewTab } from "./overview-tab";
+import { RemindersTab } from "./reminders-tab";
 import { RiskTab } from "./risk-tab";
 import { SettingsTab } from "./settings-tab";
 
-const TABS = ["overview", "risk", "actions", "settings"] as const;
+const TABS = ["overview", "risk", "actions", "reminders", "settings"] as const;
 type Tab = (typeof TABS)[number];
 
 export function ArrearsPage() {
@@ -27,6 +28,7 @@ export function ArrearsPage() {
     overview: t("arrears.tabOverview"),
     risk: t("arrears.tabRisk"),
     actions: t("arrears.tabActions"),
+    reminders: t("reminders.tab"),
     settings: t("arrears.tabSettings"),
   };
 
@@ -56,6 +58,7 @@ export function ArrearsPage() {
       {tab === "overview" ? <OverviewTab /> : null}
       {tab === "risk" ? <RiskTab /> : null}
       {tab === "actions" ? <ActionsTab /> : null}
+      {tab === "reminders" ? <RemindersTab /> : null}
       {tab === "settings" ? <SettingsTab /> : null}
     </div>
   );

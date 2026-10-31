@@ -7,6 +7,14 @@ import { arrearsEn } from "./sections/arrears.en";
 import { capitalEn } from "./sections/capital.en";
 import { backofficeEn } from "./sections/backoffice.en";
 import { workspaceEn } from "./sections/workspace.en";
+import { governanceEn } from "./sections/governance.en";
+import { propertyEn } from "./sections/property.en";
+import { organisationsEn } from "./sections/organisations.en";
+import { readinessEn } from "./sections/readiness.en";
+import { recordsEn } from "./sections/records.en";
+import { budgetsEn } from "./sections/budgets.en";
+import { planningEn } from "./sections/planning.en";
+import { aidocsEn } from "./sections/aidocs.en";
 
 /**
  * The English dictionary is the source of truth for message keys. Each feature keeps its own
@@ -23,6 +31,14 @@ export const en = {
   ...expensesEn,
   ...importsEn,
   ...healthEn,
+  ...governanceEn,
+  ...propertyEn,
+  ...organisationsEn,
+  ...readinessEn,
+  ...recordsEn,
+  ...budgetsEn,
+  ...planningEn,
+  ...aidocsEn,
 } as const;
 
 type Widen<T> = T extends string ? string : { readonly [K in keyof T]: Widen<T[K]> };

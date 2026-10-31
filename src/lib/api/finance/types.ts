@@ -8,7 +8,18 @@
 
 import type { Page } from "../envelope";
 
-export type SchemeRoleName = "Manager" | "ReadOnly";
+export type SchemeRoleName = "Manager" | "ReadOnly" | "CommitteeMember" | "Treasurer" | "Analyst";
+
+/** What a scheme role may do. The API returns the caller's list in the scheme context. */
+export type SchemePermissionName =
+  | "ViewFinancials"
+  | "ManageFinancials"
+  | "ApproveBudgets"
+  | "ApproveReminders"
+  | "ManageMembers"
+  | "ViewAudit"
+  | "ExportReports"
+  | "ManageProperty";
 export type FundName = "Admin" | "CapitalWorks";
 
 export interface SchemeSummary {
@@ -24,6 +35,11 @@ export interface SchemeContext {
   title: string;
   address: string;
   role: SchemeRoleName | string;
+  /** "Membership" for a direct scheme role, "Organisation" when granted by an organisation. */
+  accessSource?: "Membership" | "Organisation" | string;
+  organisationId?: number | null;
+  /** Permission names, absent on older API versions. */
+  permissions?: (SchemePermissionName | string)[];
   jurisdictionCode: string;
   countryCode: string;
   currencyCode: string;
@@ -446,6 +462,18 @@ export interface CapitalWorkItem {
   currency: string;
   importBatchId: string | null;
   estimates: CapitalWorkEstimate[];
+  /** External funding (everything except the capital works fund), capped at the estimate. */
+  externalFunding?: number;
+  fundedFromCapitalWorksFund?: number;
+  fundingSources?: CapitalWorkFundingSource[];
+}
+
+export interface CapitalWorkFundingSource {
+  id: string;
+  sourceType: string;
+  amount: number;
+  isConfirmed: boolean;
+  note: string | null;
 }
 
 export interface FundingScenario {

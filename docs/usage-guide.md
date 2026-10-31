@@ -230,10 +230,13 @@ npm run dev:mock          # app on http://localhost:3000, mock API on http://127
 
 With the mock API:
 
-| Sign in as | Phone                                  | Code     | Result                                                       |
-| ---------- | -------------------------------------- | -------- | ------------------------------------------------------------ |
-| Manager    | any valid number, e.g. `+989121111111` | `123456` | Two schemes: Harbour View (NSW, AUD) and Tower A (Iran, IRR) |
-| Admin      | `+989120000000`                        | `123456` | Back office at `/backoffice`                                 |
+| Sign in as       | Phone                                  | Code     | Result                                                         |
+| ---------------- | -------------------------------------- | -------- | -------------------------------------------------------------- |
+| Manager          | any valid number, e.g. `+989121111111` | `123456` | Two schemes: Harbour View (NSW, AUD) and Tower A (Iran, IRR)   |
+| Admin            | `+989120000000`                        | `123456` | Back office at `/backoffice`                                   |
+| Treasurer        | `+61400000002`                         | `123456` | Can change data and approve; drafted the seeded reminder batch |
+| Committee member | `+61400000004`                         | `123456` | Views data, approves budgets and reminders                     |
+| Analyst          | `+61400000003`                         | `123456` | Views financials only                                          |
 
 The mock API keeps sample data in memory, including 13 months of records, arrears, flags, capital works and a verified import. Every screen and action in this guide works against it. Restarting it resets the data. It is a test double, not a full backend.
 

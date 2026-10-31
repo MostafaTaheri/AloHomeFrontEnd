@@ -6,12 +6,16 @@ import type { Surface } from "./surface";
  * authentication), and a client session can never address back-office routes.
  */
 const ALLOWED_ROOTS: Record<Surface, readonly (readonly string[])[]> = {
-  client: [["schemes"]],
+  client: [["schemes"], ["product"], ["organisations"], ["portfolio"]],
   backoffice: [
     ["backoffice", "schemes"],
     ["backoffice", "users"],
     ["backoffice", "pilot"],
     ["backoffice", "demo"],
+    ["backoffice", "organisations"],
+    ["backoffice", "audit-logs"],
+    ["backoffice", "evidence"],
+    ["backoffice", "pilot-agreements"],
   ],
 };
 
@@ -31,9 +35,10 @@ export function sanitizeBackendPath(
   return allowed ? lower.join("/") : null;
 }
 
-const UPLOAD_PATH = /^schemes\/\d{1,10}\/imports(\/[0-9a-f-]{36}\/retry)?$/;
+const UPLOAD_PATH =
+  /^schemes\/\d{1,10}\/(imports(\/[0-9a-f-]{36}\/retry)?|ai\/document-extractions)$/;
 
-/** The only endpoints that accept a multipart file upload. */
+/** The only endpoints that accept a multipart file upload: imports and AI invoice extraction. */
 export function isUploadPath(path: string): boolean {
   return UPLOAD_PATH.test(path);
 }

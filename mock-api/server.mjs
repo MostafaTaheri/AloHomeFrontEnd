@@ -8,9 +8,12 @@
 // State lives in memory and resets on restart. It is a test double, not a contract test.
 //
 //   node mock-api/server.mjs            (PORT=5099, HOST=127.0.0.1)
-//   Sign-in code: 123456. +989120000000 is an Admin; any other number manages every scheme.
+//   Sign-in code: 123456. +989120000000 is an Admin. +61400000002 is a Treasurer,
+//   +61400000003 an Analyst and +61400000004 a committee member of every scheme; any other
+//   number manages every scheme.
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { createExtended } from "./extended.mjs";
 
 const PORT = Number(process.env.PORT ?? 5099);
 // 127.0.0.1 by default; set HOST=0.0.0.0 when the mock runs in a container.
@@ -19,6 +22,46 @@ const ADMIN_PHONE = "+989120000000";
 const VALID_OTP = "123456";
 const ADMIN_ID = "11111111-1111-4111-8111-111111111111";
 const MANAGER_ID = "22222222-2222-4222-8222-222222222222";
+const TREASURER_ID = "44444444-4444-4444-8444-444444444444";
+const ANALYST_ID = "55555555-5555-4555-8555-555555555555";
+const COMMITTEE_ID = "66666666-6666-4666-8666-666666666666";
+/** Test accounts with a fixed scheme role. Unlisted numbers sign in as the manager. */
+const ROLE_PHONES = {
+  "+61400000002": TREASURER_ID,
+  "+61400000003": ANALYST_ID,
+  "+61400000004": COMMITTEE_ID,
+};
+
+// SchemePermissions.cs, in enum order.
+const ROLE_PERMISSIONS = {
+  Manager: [
+    "ViewFinancials",
+    "ManageFinancials",
+    "ApproveBudgets",
+    "ApproveReminders",
+    "ManageMembers",
+    "ViewAudit",
+    "ExportReports",
+    "ManageProperty",
+  ],
+  Treasurer: [
+    "ViewFinancials",
+    "ManageFinancials",
+    "ApproveBudgets",
+    "ApproveReminders",
+    "ViewAudit",
+    "ExportReports",
+  ],
+  CommitteeMember: [
+    "ViewFinancials",
+    "ApproveBudgets",
+    "ApproveReminders",
+    "ViewAudit",
+    "ExportReports",
+  ],
+  ReadOnly: ["ViewFinancials", "ExportReports"],
+  Analyst: ["ViewFinancials"],
+};
 
 // ------------------------------------------------------------------ enums (request numbers)
 
@@ -43,8 +86,8 @@ const E = {
   workStatus: enumMap({ Planned: 1, InProgress: 2, Completed: 3, Deferred: 4, Cancelled: 5 }),
   grouping: enumMap({ Month: 1, Category: 2, Supplier: 3 }),
   fund: enumMap({ Admin: 1, CapitalWorks: 2 }),
-  schemeRole: enumMap({ Manager: 1, ReadOnly: 2 }),
-  lotRole: enumMap({ Owner: 1, FamilyMember: 2 }),
+  schemeRole: enumMap({ Manager: 1, ReadOnly: 2, CommitteeMember: 3, Treasurer: 4, Analyst: 5 }),
+  lotRole: enumMap({ Owner: 1, FamilyMember: 2, Tenant: 3, Occupant: 4 }),
   active: enumMap({ Disabled: 0, Active: 1 }),
   recordType: enumMap({ Expense: 1, Levy: 2, Payment: 3 }),
 };
@@ -316,15 +359,18 @@ function createScheme({ title, address, jurisdictionCode, seed, demo = false, wi
     reports: [],
     feedback: [],
     members: [
-      {
-        id: 1,
-        schemeId: id,
-        userId: MANAGER_ID,
-        role: "Manager",
-        status: "Active",
-        createdAt: "2026-07-01T09:00:00Z",
-      },
-    ],
+      [MANAGER_ID, "Manager"],
+      [TREASURER_ID, "Treasurer"],
+      [ANALYST_ID, "Analyst"],
+      [COMMITTEE_ID, "CommitteeMember"],
+    ].map(([userId, role], i) => ({
+      id: i + 1,
+      schemeId: id,
+      userId,
+      role,
+      status: "Active",
+      createdAt: "2026-07-01T09:00:00Z",
+    })),
     residents: new Map(),
   };
 
@@ -1619,7 +1665,7 @@ function makeToken(phone) {
   return [
     b64({ alg: "none", typ: "JWT" }),
     b64({
-      sub: admin ? ADMIN_ID : MANAGER_ID,
+      sub: admin ? ADMIN_ID : (ROLE_PHONES[phone] ?? MANAGER_ID),
       phone_number: phone,
       roles: admin ? ["Admin"] : ["Resident"],
       exp: Math.floor(Date.now() / 1000) + 3600,
@@ -1696,17 +1742,38 @@ function minimalPdf(title) {
 
 // ------------------------------------------------------------------ client routes
 
+/** The caller's role on a scheme. Accounts that are not members manage it, as before. */
+function roleOf(s, userId) {
+  return s.members.find((x) => x.userId === userId && x.status === "Active")?.role ?? "Manager";
+}
+const can = (s, userId, permission) =>
+  (ROLE_PERMISSIONS[roleOf(s, userId)] ?? []).includes(permission);
+const forbidden = (res) =>
+  fail(res, 403, "App_Autorization_403", "Permission Denied.", [
+    "Your role on this scheme does not allow this action.",
+  ]);
+
 async function schemeRoutes(req, res, s, rest, q, lang, user) {
   const m = req.method;
   let match;
 
+  // Writes need ManageFinancials unless a more specific permission handles them below.
+  const extended = await extendedSchemeRoutes(req, res, s, rest, q, lang, user);
+  if (extended !== undefined) return extended;
+  if (m !== "GET" && !can(s, user, "ManageFinancials") && rest !== "feedback")
+    return forbidden(res);
+
   if (m === "GET" && rest === "context") {
     const mk = s.market;
+    const role = roleOf(s, user);
     return ok(res, {
       schemeId: s.id,
       title: s.title,
       address: s.address,
-      role: "Manager",
+      role,
+      accessSource: "Membership",
+      organisationId: s.organisationId ?? null,
+      permissions: ROLE_PERMISSIONS[role] ?? ["ViewFinancials"],
       jurisdictionCode: s.jurisdictionCode,
       countryCode: mk.countryCode,
       currencyCode: mk.currency,
@@ -2385,9 +2452,12 @@ function pilotMetrics(s) {
   };
 }
 
-async function backofficeRoutes(req, res, path, q) {
+async function backofficeRoutes(req, res, path, q, user) {
   const m = req.method;
   let match;
+
+  const extended = await extendedBackofficeRoutes(req, res, path, q, user);
+  if (extended !== undefined) return extended;
 
   if (path === "backoffice/schemes" && m === "GET") {
     const status = fromEnum(E.active, q.get("status"));
@@ -2628,6 +2698,40 @@ async function backofficeRoutes(req, res, path, q) {
   return notFound(res, "Endpoint");
 }
 
+// ------------------------------------------------------------------ post-MVP routes
+
+const {
+  globalRoutes: extendedGlobalRoutes,
+  schemeRoutes: extendedSchemeRoutes,
+  backofficeRoutes: extendedBackofficeRoutes,
+} = createExtended({
+  schemes,
+  ok,
+  fail,
+  notFound,
+  readJson,
+  readRaw,
+  parseMultipart,
+  pageOf,
+  nowUtc,
+  addDays,
+  daysBetween,
+  sum,
+  roleOf,
+  can,
+  forbidden,
+  lotBalance,
+  financialHealth,
+  freshness,
+  projection,
+  createScheme,
+  minimalPdf,
+  accessDenied,
+  MANAGER_ID,
+  TREASURER_ID,
+  COMMITTEE_ID,
+});
+
 // ------------------------------------------------------------------ server
 
 const server = createServer(async (req, res) => {
@@ -2674,10 +2778,13 @@ const server = createServer(async (req, res) => {
             title: s.title,
             jurisdictionCode: s.jurisdictionCode,
             currencyCode: s.market.currency,
-            role: "Manager",
+            role: roleOf(s, user.sub),
           })),
       );
     }
+    const global = await extendedGlobalRoutes(req, res, path, q, lang, user);
+    if (global !== undefined) return;
+
     const scoped = /^schemes\/(\d+)\/(.+)$/.exec(path);
     if (scoped) {
       const s = schemes.get(Number(scoped[1]));
@@ -2689,7 +2796,7 @@ const server = createServer(async (req, res) => {
 
     if (path.startsWith("backoffice/")) {
       if (!user.roles?.includes("Admin")) return fail(res, 403, "Forbidden", "Forbidden");
-      return await backofficeRoutes(req, res, path, q);
+      return await backofficeRoutes(req, res, path, q, user.sub);
     }
 
     return notFound(res, "Endpoint");

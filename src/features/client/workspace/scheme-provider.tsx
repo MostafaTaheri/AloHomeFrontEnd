@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { useEnumLabel } from "@/components/finance/enum-badge";
 import { CurrencyUnitSwitcher } from "@/components/layout/preferences";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,9 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/ui/states";
 import { I18nProvider, useI18n } from "@/i18n/provider";
 import { ApiError } from "@/lib/api/error";
 import { schemesApi } from "@/lib/api/finance/endpoints";
-import type { SchemeContext } from "@/lib/api/finance/types";
+import type { SchemeContext, SchemePermissionName } from "@/lib/api/finance/types";
 import { qk } from "@/lib/api/keys";
+import { permissionsFor } from "@/lib/permissions";
 import { profileFor, regionForJurisdiction } from "@/lib/region/config";
 import { track } from "@/lib/telemetry/client";
 import { SchemeNav } from "./scheme-nav";
@@ -20,8 +22,10 @@ interface SchemeValue {
   schemeId: number;
   scheme: SchemeContext;
   currency: string;
-  /** Managers can change data; read-only members can only view. The API enforces this too. */
+  /** Whether the person may change financial data (ManageFinancials). The API enforces this too. */
   canWrite: boolean;
+  /** Checks one scheme permission. Hides actions only; the API is the authority. */
+  can: (permission: SchemePermissionName) => boolean;
   adminFundLabel: string;
   capitalWorksFundLabel: string;
 }
@@ -107,17 +111,18 @@ function SchemeScope({
   // Fall back to the person's own market for a jurisdiction this app does not know yet.
   const region = regionForJurisdiction(scheme.jurisdictionCode) ?? outer.region;
 
-  const value = useMemo<SchemeValue>(
-    () => ({
+  const value = useMemo<SchemeValue>(() => {
+    const granted = permissionsFor(scheme);
+    return {
       schemeId,
       scheme,
       currency: scheme.currencyCode || profileFor(region).currency,
-      canWrite: scheme.role === "Manager",
+      canWrite: granted.has("ManageFinancials"),
+      can: (permission) => granted.has(permission),
       adminFundLabel: scheme.adminFundLabel,
       capitalWorksFundLabel: scheme.capitalWorksFundLabel,
-    }),
-    [schemeId, scheme, region],
-  );
+    };
+  }, [schemeId, scheme, region]);
 
   return (
     <I18nProvider locale={outer.locale} region={region} currencyUnit={outer.currencyUnit}>
@@ -130,6 +135,7 @@ function SchemeScope({
 
 function WorkspaceChrome({ children }: { children: ReactNode }) {
   const { t, fmt, region } = useI18n();
+  const enumLabel = useEnumLabel();
   const { scheme, schemeId, canWrite } = useScheme();
 
   return (
@@ -145,14 +151,11 @@ function WorkspaceChrome({ children }: { children: ReactNode }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={canWrite ? "ok" : "neutral"}>
-              {t("workspace.roleBadge", {
-                role: t(
-                  scheme.role === "Manager"
-                    ? "enums.schemeRole.Manager"
-                    : "enums.schemeRole.ReadOnly",
-                ),
-              })}
+              {t("workspace.roleBadge", { role: enumLabel("schemeRole", scheme.role) })}
             </Badge>
+            {scheme.accessSource === "Organisation" ? (
+              <Badge tone="neutral">{t("workspace.viaOrganisation")}</Badge>
+            ) : null}
             <CurrencyUnitSwitcher />
             <Link href="/schemes">
               <Button variant="secondary" size="sm">

@@ -51,10 +51,13 @@ Stop any other `next dev` running in this folder first. Next.js allows only one 
 
 To run the two separately, start them in two terminals: `npm run mock`, then `API_BASE_URL=http://127.0.0.1:5099 npm run dev`. If `npm run dev` is started without `API_BASE_URL`, it uses `.env.local` and every call fails with "The service is temporarily unavailable".
 
-| Sign in as                                 | Phone                                  | Code     | You get                                                      |
-| ------------------------------------------ | -------------------------------------- | -------- | ------------------------------------------------------------ |
-| Manager (client) at `/login`               | any valid number, e.g. `+989121111111` | `123456` | Two schemes: Harbour View (NSW, AUD) and Tower A (Iran, IRR) |
-| Admin (back office) at `/backoffice/login` | `+989120000000`                        | `123456` | The staff console                                            |
+| Sign in as                                 | Phone                                  | Code     | You get                                                        |
+| ------------------------------------------ | -------------------------------------- | -------- | -------------------------------------------------------------- |
+| Manager (client) at `/login`               | any valid number, e.g. `+989121111111` | `123456` | Two schemes: Harbour View (NSW, AUD) and Tower A (Iran, IRR)   |
+| Admin (back office) at `/backoffice/login` | `+989120000000`                        | `123456` | The staff console                                              |
+| Treasurer (client)                         | `+61400000002`                         | `123456` | Can change data and approve; drafted the seeded reminder batch |
+| Committee member (client)                  | `+61400000004`                         | `123456` | Views data, approves budgets and reminders                     |
+| Analyst (client)                           | `+61400000003`                         | `123456` | Views financials only; no audit log, no changes                |
 
 The mock keeps its data in memory and resets when it restarts. It has 13 months of records per scheme, lots in arrears, expense flags, capital works, funding scenarios and a verified import. Uploads, reviews, reports, AI explanations and back-office changes all work against it. It is a test double that follows the API's wire format. It does not replace testing against the real API.
 
@@ -280,7 +283,7 @@ Production checklist:
 
 ## Status
 
-Type check, lint, 141 unit tests, the production build and 15 Playwright tests pass. The Playwright suite runs against the mock API, so it checks frontend behaviour, not compatibility with the real API.
+Type check, lint, 167 unit tests, the production build and 20 Playwright tests pass. The Playwright suite runs against the mock API, so it checks frontend behaviour, not compatibility with the real API.
 
 Open items:
 

@@ -12,11 +12,20 @@ import { EmptyState, ErrorState, ListSkeleton } from "@/components/ui/states";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { useI18n } from "@/i18n/provider";
 import { backofficeApi, type SchemeMember } from "@/lib/api/backoffice";
+import { SchemeRole } from "@/lib/api/finance/enums";
+import type { SchemeRoleName } from "@/lib/api/finance/types";
 import { qk } from "@/lib/api/keys";
 import { useBoMutation } from "../use-bo-mutation";
 import { parseUserId } from "./parse";
 
-type Role = "Manager" | "ReadOnly";
+type Role = SchemeRoleName;
+const ROLES = SchemeRole.names;
+
+/** Members lists may serialise the role as a number; normalise to the name. */
+function roleName(value: string | number): Role | null {
+  if (SchemeRole.isName(value)) return value;
+  return SchemeRole.fromNumber(Number(value)) ?? null;
+}
 
 export function MembersSection({ schemeId }: { schemeId: number }) {
   const { t, fmt } = useI18n();
@@ -96,8 +105,11 @@ export function MembersSection({ schemeId }: { schemeId: number }) {
                   value={role}
                   onChange={(e) => setRole(e.target.value as Role)}
                 >
-                  <option value="Manager">{t("enums.schemeRole.Manager")}</option>
-                  <option value="ReadOnly">{t("enums.schemeRole.ReadOnly")}</option>
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {t(`enums.schemeRole.${r}`)}
+                    </option>
+                  ))}
                 </Select>
               </Field>
             </div>
@@ -136,27 +148,29 @@ export function MembersSection({ schemeId }: { schemeId: number }) {
                       {m.userId}
                     </TD>
                     <TD>
-                      <EnumBadge group="schemeRole" value={m.role} />
+                      <EnumBadge group="schemeRole" value={roleName(m.role) ?? m.role} />
                     </TD>
                     <TD>{fmt.date(m.createdAt)}</TD>
                     <TD>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
+                        <Select
+                          id={`member-role-${m.id}`}
+                          aria-label={t("backoffice.changeRole")}
+                          className="h-8 w-44"
+                          value={roleName(m.role) ?? ""}
                           disabled={change.isPending}
-                          onClick={() =>
-                            change.mutate({
-                              userId: m.userId,
-                              role:
-                                String(m.role) === "Manager" || String(m.role) === "1"
-                                  ? "ReadOnly"
-                                  : "Manager",
-                            })
-                          }
+                          onChange={(e) => {
+                            const next = e.target.value as Role;
+                            if (next !== roleName(m.role))
+                              change.mutate({ userId: m.userId, role: next });
+                          }}
                         >
-                          {t("backoffice.changeRole")}
-                        </Button>
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {t(`enums.schemeRole.${r}`)}
+                            </option>
+                          ))}
+                        </Select>
                         <Button size="sm" variant="danger" onClick={() => setRemoving(m)}>
                           {t("common.remove")}
                         </Button>

@@ -23,6 +23,7 @@ import { amountToInput, parseAmountInput } from "@/lib/format/amount";
 import { useSchemeMutation } from "../use-scheme-mutation";
 import { useScheme } from "../workspace/scheme-provider";
 import { parseHorizon, parsePercent, parseYear, yearBounds } from "./parse";
+import { ContributionImpactCard } from "./contribution-impact";
 
 export function ScenariosTab() {
   const { t, fmt } = useI18n();
@@ -126,6 +127,7 @@ export function ScenariosTab() {
           </Card>
 
           {activeId ? <GapCard scenarioId={activeId} /> : null}
+          {activeId ? <ContributionImpactCard scenarioId={activeId} /> : null}
           <CompareCard ids={compareIds} scenarios={query.data} />
         </>
       ) : null}
