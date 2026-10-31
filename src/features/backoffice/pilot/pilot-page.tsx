@@ -16,6 +16,7 @@ import { backofficeApi } from "@/lib/api/backoffice";
 import { qk } from "@/lib/api/keys";
 import { parseSchemeId } from "@/lib/scheme-id";
 import { usePageView } from "@/lib/telemetry/client";
+import { AgreementsSection } from "./agreements-section";
 
 export function PilotPage() {
   const { t } = useI18n();
@@ -53,6 +54,9 @@ export function PilotPage() {
         <Metrics schemeId={schemeId} />
       )}
       <FeedbackList schemeId={schemeId} />
+      <AgreementsSection
+        schemes={(schemes.data?.items ?? []).map((s) => ({ id: s.id, title: s.title }))}
+      />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { qk } from "@/lib/api/keys";
 import { REGION_PROFILES, REGIONS, type Region } from "@/lib/region/config";
 import { usePageView } from "@/lib/telemetry/client";
 import { useBoMutation } from "../use-bo-mutation";
+import { InvestorFlowCard } from "./investor-flow-card";
 
 export function OverviewPage() {
   const { t, fmt } = useI18n();
@@ -48,6 +49,26 @@ export function OverviewPage() {
       title: t("backoffice.cardPilot"),
       body: t("backoffice.cardPilotBody"),
     },
+    {
+      href: "/backoffice/organisations",
+      title: t("organisations.title"),
+      body: t("organisations.cardBody"),
+    },
+    {
+      href: "/backoffice/audit-log",
+      title: t("nav.auditLog"),
+      body: t("audit.cardBody"),
+    },
+    {
+      href: "/backoffice/evidence",
+      title: t("evidence.title"),
+      body: t("evidence.cardBody"),
+    },
+    {
+      href: "/backoffice/product",
+      title: t("product.title"),
+      body: t("product.cardBody"),
+    },
   ];
 
   return (
@@ -72,6 +93,7 @@ export function OverviewPage() {
         ))}
       </ul>
       <DemoCard />
+      <InvestorFlowCard />
     </div>
   );
 }

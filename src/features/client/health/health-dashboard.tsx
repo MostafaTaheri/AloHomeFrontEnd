@@ -16,6 +16,7 @@ import { qk } from "@/lib/api/keys";
 import { usePageView } from "@/lib/telemetry/client";
 import { useScheme } from "../workspace/scheme-provider";
 import { FinancialHealthView, MonthlySummaryView } from "./health-view";
+import { OnboardingCard } from "./onboarding-card";
 
 export function HealthDashboard() {
   const { t, fmt } = useI18n();
@@ -58,6 +59,8 @@ export function HealthDashboard() {
           </div>
         }
       />
+
+      <OnboardingCard />
 
       {health.isPending ? <ListSkeleton rows={5} /> : null}
       {health.isError ? (

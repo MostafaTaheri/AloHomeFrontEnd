@@ -29,6 +29,7 @@ export function useLookups() {
       categoryName: (id: string | null) => (id ? (cat.get(id) ?? null) : null),
       supplierName: (id: string | null) => (id ? (sup.get(id) ?? null) : null),
       categories: categories.data ?? [],
+      suppliers: suppliers.data ?? [],
     };
   }, [categories.data, suppliers.data, locale]);
 }

@@ -21,23 +21,34 @@ import { track, usePageView } from "@/lib/telemetry/client";
 import { cn } from "@/lib/utils";
 import { useSchemeMutation } from "../use-scheme-mutation";
 import { useScheme } from "../workspace/scheme-provider";
+import { AskTab } from "./ask-tab";
+import { DocumentsTab } from "./documents-tab";
+
+const TABS = ["insights", "suggestions", "documents", "ask"] as const;
+type Tab = (typeof TABS)[number];
 
 export function AiReviewPage() {
   const { t } = useI18n();
   const { schemeId } = useScheme();
-  const tab = useSearchParams().get("tab") === "suggestions" ? "suggestions" : "insights";
+  const raw = useSearchParams().get("tab");
+  const tab: Tab = (TABS as readonly string[]).includes(raw ?? "") ? (raw as Tab) : "insights";
   usePageView("ai-review", tab);
   const base = `/schemes/${schemeId}/ai-review`;
   const tabs = [
     { id: "insights", href: base, label: t("aiReview.tabInsights") },
     { id: "suggestions", href: `${base}?tab=suggestions`, label: t("aiReview.tabSuggestions") },
+    { id: "documents", href: `${base}?tab=documents`, label: t("aiDocs.tab") },
+    { id: "ask", href: `${base}?tab=ask`, label: t("ask.tab") },
   ] as const;
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("aiReview.title")} description={t("aiReview.subtitle")} />
       <InlineAlert tone="warn">{t("ai.notice")}</InlineAlert>
-      <nav aria-label={t("aiReview.tabsLabel")} className="flex gap-1 border-b border-line">
+      <nav
+        aria-label={t("aiReview.tabsLabel")}
+        className="flex flex-wrap gap-1 border-b border-line"
+      >
         {tabs.map((item) => (
           <Link
             key={item.id}
@@ -54,7 +65,10 @@ export function AiReviewPage() {
           </Link>
         ))}
       </nav>
-      {tab === "suggestions" ? <SuggestionsTab /> : <InsightsTab />}
+      {tab === "insights" ? <InsightsTab /> : null}
+      {tab === "suggestions" ? <SuggestionsTab /> : null}
+      {tab === "documents" ? <DocumentsTab /> : null}
+      {tab === "ask" ? <AskTab /> : null}
     </div>
   );
 }

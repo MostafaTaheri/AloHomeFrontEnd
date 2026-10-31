@@ -4,14 +4,17 @@ This document covers every part of the frontend: the screens, who can use them, 
 
 ## 1. Roles
 
-| Role                          | Where it comes from                | Surface     | What it can do                                                                                                                                               |
-| ----------------------------- | ---------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Manager                       | Scheme membership, role `Manager`  | Client      | Everything in a scheme: import data, review flags and AI output, manage arrears follow-ups and settings, plan capital works, generate reports, send feedback |
-| Read-only member              | Scheme membership, role `ReadOnly` | Client      | View every screen of the scheme. Actions that change data are hidden and replaced by a short read-only notice.                                               |
-| Signed-in user with no scheme | Any account                        | Client      | Sees an empty scheme picker with instructions to ask support                                                                                                 |
-| Admin                         | JWT role `Admin`                   | Back office | Schemes, lots, residents, members, users, access log, pilot metrics, demo data                                                                               |
+| Role                          | Where it comes from                                                            | Surface     | What it can do                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------- |
+| Manager                       | Scheme membership, role `Manager`, or owner/admin of the scheme's organisation | Client      | Every permission                                                                         |
+| Treasurer                     | Scheme membership                                                              | Client      | Change financial data, approve budgets and reminders, view the audit log, export reports |
+| Committee member              | Scheme membership                                                              | Client      | View, approve budgets and reminders, view the audit log, export reports                  |
+| Read-only member              | Scheme membership, role `ReadOnly`                                             | Client      | View every screen and export reports. Actions that change data are hidden.               |
+| Analyst                       | Scheme membership                                                              | Client      | View financials only                                                                     |
+| Signed-in user with no scheme | Any account                                                                    | Client      | Sees an empty scheme picker with instructions to ask support                             |
+| Admin                         | JWT role `Admin`                                                               | Back office | Schemes, lots, residents, members, users, access log, pilot metrics, demo data           |
 
-In the client, `canWrite` is true only for `Manager`. The API applies the same rule independently.
+The scheme context returns the caller's permission names (`ViewFinancials`, `ManageFinancials`, `ApproveBudgets`, `ApproveReminders`, `ManageMembers`, `ViewAudit`, `ExportReports`, `ManageProperty`). `useScheme().can(permission)` hides what a role cannot do, and `canWrite` means `ManageFinancials`; when an older API sends no list, `src/lib/permissions.ts` falls back to the role matrix. The API enforces every permission itself. Navigation items tied to a feature the product catalogue marks Frozen, Deferred or Rejected are hidden (`src/lib/features.ts`).
 
 ## 2. Route map
 
@@ -32,21 +35,30 @@ In the client, `canWrite` is true only for `Manager`. The API applies the same r
 | `/schemes/{id}/reports`            | Reports list and generation                        |                                                         |
 | `/schemes/{id}/reports/{reportId}` | Report detail                                      | Snapshot, commentary, PDF                               |
 | `/schemes/{id}/feedback`           | Feedback                                           |                                                         |
+| `/schemes/{id}/budgets`            | Budgets                                            | Tabs: versions, `?tab=actual`, `?tab=variance`          |
+| `/schemes/{id}/property`           | Lots, owners, occupants; `?tab=committee`          | Effective-dated history and office holders              |
+| `/schemes/{id}/audit`              | Audit log                                          | Needs `ViewAudit`                                       |
+| `/schemes/{id}/glossary`           | Data dictionary for the scheme's jurisdiction      |                                                         |
+| `/schemes/portfolio`               | Portfolio across schemes                           | `?organisation=` filters by organisation                |
 | `/dashboard/*`                     | Redirect                                           | Permanent redirect to `/schemes`                        |
 
 ### Back office
 
-| Route                      | Screen                                      |
-| -------------------------- | ------------------------------------------- |
-| `/backoffice/login`        | Staff sign-in (no registration)             |
-| `/backoffice/forbidden`    | Shown to signed-in accounts without `Admin` |
-| `/backoffice`              | Overview and demo data                      |
-| `/backoffice/schemes`      | Scheme list, create scheme                  |
-| `/backoffice/schemes/{id}` | Scheme detail: lots, members, details       |
-| `/backoffice/users`        | Create users, activate and deactivate       |
-| `/backoffice/access-log`   | Refused access requests                     |
-| `/backoffice/pilot`        | Pilot metrics and feedback per scheme       |
-| `/admin/*`                 | Permanent redirect to `/backoffice/*`       |
+| Route                       | Screen                                            |
+| --------------------------- | ------------------------------------------------- |
+| `/backoffice/login`         | Staff sign-in (no registration)                   |
+| `/backoffice/forbidden`     | Shown to signed-in accounts without `Admin`       |
+| `/backoffice`               | Overview and demo data                            |
+| `/backoffice/schemes`       | Scheme list, create scheme                        |
+| `/backoffice/schemes/{id}`  | Scheme detail: lots, members, details             |
+| `/backoffice/users`         | Create users, activate and deactivate             |
+| `/backoffice/access-log`    | Refused access requests                           |
+| `/backoffice/pilot`         | Pilot metrics, feedback and pilot agreements      |
+| `/backoffice/organisations` | Organisations, members and attached schemes       |
+| `/backoffice/audit-log`     | Audit entries across schemes and organisations    |
+| `/backoffice/evidence`      | Security and privacy evidence pack                |
+| `/backoffice/product`       | Product narrative, feature decisions, pilot scope |
+| `/admin/*`                  | Permanent redirect to `/backoffice/*`             |
 
 ### Server routes
 
@@ -196,6 +208,25 @@ API call: `schemes/{id}/feedback` (submit and list).
 - **Ratings:** Useful, Not useful, Incorrect, Needs review, with an optional comment.
 - **Feedback page:** an overall usefulness rating and the list of feedback already sent.
 
+### 3.11 Added after the MVP
+
+| Story          | Screen                                                                                                                       | API                                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| GOV-01..04     | Feature-gated navigation, `/schemes/{id}/glossary`, `/backoffice/product`                                                    | `product/governance`, `product/data-dictionary`                                                               |
+| IAM-01         | Organisations on the scheme picker, `/backoffice/organisations`                                                              | `organisations/mine`, `backoffice/organisations/...`                                                          |
+| IAM-02..04     | Five roles, permission-aware actions, "access through your organisation" badge                                               | `schemes/{id}/context`                                                                                        |
+| SEC-02         | `/schemes/{id}/audit`, `/backoffice/audit-log`                                                                               | `schemes/{id}/audit-logs`, `backoffice/audit-logs`                                                            |
+| STR-03..05     | `/schemes/{id}/property`: holders on a date, append-only history, transfers (shares total 100%), occupancies, office holders | `lots/{lotId}/tenures`, `holders`, `ownership-transfers`, `occupancies`, `tenures/{id}/end`, `office-holders` |
+| FIN-06, FIN-08 | Record history dialog from expense drill-down, budget lines and AI evidence                                                  | `financial-records/{id}/versions`                                                                             |
+| BUD-01..05     | `/schemes/{id}/budgets`                                                                                                      | `budgets`, `budgets/{id}/lines`, `approve`, `vs-actual`, `variance`                                           |
+| RPT-03         | Committee meeting pack card on Reports, with PDF                                                                             | `reports/committee-pack`, `/pdf`                                                                              |
+| ARR-08         | Arrears `?tab=reminders`: draft, exclude, approve by a second person, reject                                                 | `arrears/reminders/...`                                                                                       |
+| CAP-04, CAP-08 | Funding sources on each item; contribution impact under the funding gap                                                      | `capital-works/items/{id}/funding-sources`, `scenarios/{id}/contribution-impact`                              |
+| AI-02          | AI review `?tab=documents`: PDF upload, grounded fields, accept or reject                                                    | `ai/document-extractions`                                                                                     |
+| AI-07          | AI review `?tab=ask`: constrained questions with deterministic figures                                                       | `ai/questions`                                                                                                |
+| GTM-04, GTM-06 | Portfolio; onboarding checklist on Financial health                                                                          | `portfolio`, `onboarding/checklist`                                                                           |
+| GTM-07..10     | Evidence pack, case study tab on a back-office scheme, pilot agreements, investor demo on the overview                       | `backoffice/evidence/security`, `schemes/{id}/case-study`, `pilot-agreements`, `demo/investor-flow`           |
+
 ## 4. Back-office surface
 
 ### 4.1 Sign-in and access
@@ -282,16 +313,19 @@ Every data screen handles the same set of states.
 
 ## 6. Telemetry events
 
-| Event                                                                                                        | When                                          |
-| ------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
-| `auth_signed_in`                                                                                             | A successful sign-in on either surface        |
-| `import_started`, `import_mapped`, `import_previewed`, `import_committed`, `import_failed`, `import_retried` | Each import step                              |
-| `wizard_abandoned`                                                                                           | The user leaves an unfinished import          |
-| `flag_reviewed`                                                                                              | A flag review is saved                        |
-| `ai_explanation_requested`, `ai_explanation_shown`                                                           | An AI explanation is requested and displayed  |
-| `ai_suggestion_reviewed`                                                                                     | A category suggestion is accepted or rejected |
-| `report_generated`, `report_exported`                                                                        | A report is generated or its PDF downloaded   |
-| `feedback_submitted`                                                                                         | A feedback answer is sent                     |
+| Event                                                                                                        | When                                                       |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `auth_signed_in`                                                                                             | A successful sign-in on either surface                     |
+| `import_started`, `import_mapped`, `import_previewed`, `import_committed`, `import_failed`, `import_retried` | Each import step                                           |
+| `wizard_abandoned`                                                                                           | The user leaves an unfinished import                       |
+| `flag_reviewed`                                                                                              | A flag review is saved                                     |
+| `ai_explanation_requested`, `ai_explanation_shown`                                                           | An AI explanation is requested and displayed               |
+| `ai_suggestion_reviewed`                                                                                     | A category suggestion is accepted or rejected              |
+| `report_generated`, `report_exported`                                                                        | A report is generated or its PDF downloaded                |
+| `feedback_submitted`                                                                                         | A feedback answer is sent                                  |
+| `reminders_drafted`, `reminders_reviewed`                                                                    | A reminder batch is drafted, approved or rejected          |
+| `ai_document_uploaded`, `ai_document_reviewed`, `ai_question_asked`                                          | Invoice extraction and questions (never the question text) |
+| `investor_flow_seeded`                                                                                       | Staff create an investor demo                              |
 
 Properties are limited to short identifiers and counts. No amounts, names, phone numbers or free text.
 
@@ -314,9 +348,9 @@ User preferences are stored in cookies (one year): `alohome-locale`, `alohome-re
 
 ## 8. Testing assets
 
-| Asset                  | Purpose                                                                                                                                                                                                                                                                                                     |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/**/*.test.ts`     | Vitest unit tests (141 at the time of writing)                                                                                                                                                                                                                                                              |
-| `e2e/app.spec.ts`      | Playwright suite (15 tests)                                                                                                                                                                                                                                                                                 |
-| `mock-api/server.mjs`  | Stateful in-memory mock of the API for e2e and demos (`npm run mock`, or `npm run dev:mock` with the app). OTP `123456`. Phone `+989120000000` gets the `Admin` role, and any other number is a manager of two seeded schemes (Harbour View, NSW and Tower A, Iran). It covers every endpoint the UI calls. |
-| `playwright.config.ts` | Starts the mock on port 5099 and the built app on 3100                                                                                                                                                                                                                                                      |
+| Asset                  | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/**/*.test.ts`     | Vitest unit tests (167 at the time of writing)                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `e2e/app.spec.ts`      | Playwright suite (20 tests, including post-MVP journeys)                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `mock-api/server.mjs`  | Stateful in-memory mock of the API for e2e and demos (`npm run mock`, or `npm run dev:mock` with the app). OTP `123456`. Phone `+989120000000` gets the `Admin` role; `+61400000002`, `+61400000003` and `+61400000004` are a treasurer, an analyst and a committee member; any other number is a manager of two seeded schemes (Harbour View, NSW and Tower A, Iran). Post-MVP routes live in `mock-api/extended.mjs`. It covers every endpoint the UI calls. |
+| `playwright.config.ts` | Starts the mock on port 5099 and the built app on 3100                                                                                                                                                                                                                                                                                                                                                                                                         |

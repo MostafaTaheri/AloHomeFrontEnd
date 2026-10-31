@@ -88,3 +88,12 @@ export function isRetryable(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false;
   return error.status === 0 || error.status >= 500;
 }
+
+/**
+ * Whether an API error carries a numeric business code, e.g. 430010 for "no approved budget".
+ * The API sends it as "App_AloHome_430010" or as the bare number, so match the suffix.
+ */
+export function hasErrorCode(error: unknown, code: number): boolean {
+  if (!(error instanceof ApiError) || !error.code) return false;
+  return new RegExp(`(^|_)${code}$`).test(error.code);
+}

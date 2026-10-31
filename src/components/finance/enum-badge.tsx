@@ -40,7 +40,49 @@ const TONES: Record<string, Record<string, Tone>> = {
   suggestion: { Pending: "warn", Accepted: "ok", Rejected: "neutral" },
   recordStatus: { Unverified: "warn", Verified: "ok", Voided: "neutral" },
   active: { Active: "ok", Disabled: "warn" },
-  schemeRole: { Manager: "ok", ReadOnly: "neutral" },
+  schemeRole: {
+    Manager: "ok",
+    ReadOnly: "neutral",
+    CommitteeMember: "neutral",
+    Treasurer: "ok",
+    Analyst: "neutral",
+  },
+  featureStatus: { Active: "ok", Frozen: "warn", Deferred: "neutral", Rejected: "danger" },
+  orgStatus: { Active: "ok", Suspended: "danger" },
+  membershipStatus: { Active: "ok", Revoked: "neutral" },
+  auditCategory: { Access: "warn", Approval: "ok", Export: "neutral", Ai: "neutral" },
+  tenureSource: { Manual: "neutral", Migrated: "warn", Transfer: "ok" },
+  changeType: {
+    Created: "neutral",
+    Corrected: "warn",
+    Recategorised: "warn",
+    Verified: "ok",
+    Voided: "danger",
+  },
+  budgetStatus: { Draft: "warn", Approved: "ok", Superseded: "neutral" },
+  varianceStatus: {
+    WithinTolerance: "ok",
+    OverBudget: "danger",
+    UnderBudget: "warn",
+    NotMeaningful: "neutral",
+    Unbudgeted: "danger",
+  },
+  reminderStatus: { Draft: "warn", Approved: "ok", Rejected: "neutral" },
+  reminderItemStatus: {
+    Pending: "neutral",
+    Queued: "warn",
+    Sent: "ok",
+    Failed: "danger",
+    Skipped: "neutral",
+  },
+  extractionStatus: {
+    PendingReview: "warn",
+    Accepted: "ok",
+    Rejected: "neutral",
+    Failed: "danger",
+  },
+  answerStatus: { Answered: "ok", Unsupported: "warn", Unavailable: "danger" },
+  pilotStatus: { Prospect: "neutral", Active: "warn", Converted: "ok", Lost: "danger" },
 };
 
 export type EnumGroup =
@@ -65,7 +107,26 @@ export type EnumGroup =
   | "feedbackRating"
   | "subjectType"
   | "fund"
-  | "origin";
+  | "origin"
+  | "permission"
+  | "featureStatus"
+  | "orgKind"
+  | "orgStatus"
+  | "orgRole"
+  | "membershipStatus"
+  | "auditCategory"
+  | "tenureKind"
+  | "tenureSource"
+  | "office"
+  | "changeType"
+  | "budgetStatus"
+  | "varianceStatus"
+  | "reminderStatus"
+  | "reminderItemStatus"
+  | "fundingSource"
+  | "extractionStatus"
+  | "answerStatus"
+  | "pilotStatus";
 
 /** Label for an enum value, falling back to the raw value when the server sends a new one. */
 export function useEnumLabel() {

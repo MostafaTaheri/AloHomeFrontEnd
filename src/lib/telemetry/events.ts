@@ -26,6 +26,12 @@ export const TELEMETRY_EVENTS = [
   "feedback_submitted",
   "filter_changed",
   "error_shown",
+  "reminders_drafted",
+  "reminders_reviewed",
+  "ai_document_uploaded",
+  "ai_document_reviewed",
+  "ai_question_asked",
+  "investor_flow_seeded",
 ] as const;
 
 export type TelemetryEvent = (typeof TELEMETRY_EVENTS)[number];

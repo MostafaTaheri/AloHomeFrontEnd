@@ -44,8 +44,14 @@ export const CapitalWorkStatus = table({
   Cancelled: 5,
 });
 export const FundType = table({ Admin: 1, CapitalWorks: 2 });
-export const SchemeRole = table({ Manager: 1, ReadOnly: 2 });
-export const LotRole = table({ Owner: 1, FamilyMember: 2 });
+export const SchemeRole = table({
+  Manager: 1,
+  ReadOnly: 2,
+  CommitteeMember: 3,
+  Treasurer: 4,
+  Analyst: 5,
+});
+export const LotRole = table({ Owner: 1, FamilyMember: 2, Tenant: 3, Occupant: 4 });
 export const ActiveStatus = table({ Disabled: 0, Active: 1 });
 export const SpendGrouping = table({ Month: 1, Category: 2, Supplier: 3 });
 export const AiSubjectType = table({ ExpenseFlag: 1 });

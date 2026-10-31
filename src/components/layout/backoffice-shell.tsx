@@ -11,9 +11,13 @@ import { SignOutButton } from "./sign-out-button";
 const ITEMS = [
   { href: "/backoffice", label: "nav.overview", exact: true },
   { href: "/backoffice/schemes", label: "backoffice.schemes", exact: false },
+  { href: "/backoffice/organisations", label: "nav.organisations", exact: false },
   { href: "/backoffice/users", label: "nav.users", exact: false },
+  { href: "/backoffice/audit-log", label: "nav.auditLog", exact: false },
   { href: "/backoffice/access-log", label: "nav.audit", exact: false },
   { href: "/backoffice/pilot", label: "nav.pilot", exact: false },
+  { href: "/backoffice/evidence", label: "nav.evidence", exact: false },
+  { href: "/backoffice/product", label: "nav.product", exact: false },
 ] as const;
 
 /** Chrome for staff. Separate from the client shell: different navigation, different sign-out. */

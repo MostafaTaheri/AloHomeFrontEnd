@@ -62,16 +62,16 @@ The browser never talks to the API directly. Every call goes through the app's o
 
 The app serves two products from one deployment. `src/lib/bff/surface.ts` is the single place that maps a surface to its paths and cookies.
 
-|                 | Client                                                            | Back office                                                                     |
-| --------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Users           | Strata or building managers, committee members, owners, residents | AloHome staff with the `Admin` role                                             |
-| Pages           | `/login`, `/register`, `/schemes/...`                             | `/backoffice/login`, `/backoffice/forbidden`, `/backoffice/...`                 |
-| Auth routes     | `/api/auth/{request-otp,register,login,logout,session}`           | `/api/bo/auth/{request-otp,login,logout,session}` (no self-registration)        |
-| Relay           | `/api/backend/*`                                                  | `/api/bo/backend/*`                                                             |
-| Relay allowlist | `schemes/...`                                                     | `backoffice/schemes`, `backoffice/users`, `backoffice/pilot`, `backoffice/demo` |
-| Cookies         | `alohomeAccessToken`, `alohomeRefreshToken`                       | `alohomeBoAccessToken`, `alohomeBoRefreshToken`                                 |
-| Shell           | `ClientShell` plus the per-scheme navigation                      | `BackofficeShell`                                                               |
-| Extra headers   | None                                                              | `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`                    |
+|                 | Client                                                            | Back office                                                                                                   |
+| --------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Users           | Strata or building managers, committee members, owners, residents | AloHome staff with the `Admin` role                                                                           |
+| Pages           | `/login`, `/register`, `/schemes/...`                             | `/backoffice/login`, `/backoffice/forbidden`, `/backoffice/...`                                               |
+| Auth routes     | `/api/auth/{request-otp,register,login,logout,session}`           | `/api/bo/auth/{request-otp,login,logout,session}` (no self-registration)                                      |
+| Relay           | `/api/backend/*`                                                  | `/api/bo/backend/*`                                                                                           |
+| Relay allowlist | `schemes/...`, `product/...`, `organisations/...`, `portfolio`    | `backoffice/schemes`, `users`, `pilot`, `demo`, `organisations`, `audit-logs`, `evidence`, `pilot-agreements` |
+| Cookies         | `alohomeAccessToken`, `alohomeRefreshToken`                       | `alohomeBoAccessToken`, `alohomeBoRefreshToken`                                                               |
+| Shell           | `ClientShell` plus the per-scheme navigation                      | `BackofficeShell`                                                                                             |
+| Extra headers   | None                                                              | `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`                                                  |
 
 Properties that follow from this split:
 

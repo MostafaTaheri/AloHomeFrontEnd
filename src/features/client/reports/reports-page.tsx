@@ -20,6 +20,7 @@ import { track, usePageView } from "@/lib/telemetry/client";
 import { useSchemeMutation } from "../use-scheme-mutation";
 import { useScheme } from "../workspace/scheme-provider";
 import { MonthlySummaryView } from "../health/health-view";
+import { CommitteePackCard } from "./committee-pack";
 
 const PAGE_SIZE = 20;
 
@@ -46,6 +47,8 @@ export function ReportsPage() {
           canWrite ? <Button onClick={() => setOpen(true)}>{t("reports.generate")}</Button> : null
         }
       />
+
+      <CommitteePackCard />
 
       {query.isPending ? <ListSkeleton /> : null}
       {query.isError ? (
