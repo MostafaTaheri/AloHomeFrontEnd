@@ -259,7 +259,8 @@ test.describe("post-MVP journeys", () => {
     await page.getByRole("button", { name: "Owners and history" }).nth(3).click();
     await page.getByRole("button", { name: "Transfer ownership" }).click();
     await page.getByLabel("Effective date").fill("2026-10-15");
-    await page.getByLabel("Name or user ID").fill("New Owner");
+    await page.getByLabel("Name or user ID").selectOption({ label: "Someone without an account…" });
+    await page.getByLabel("Name of the person or company").fill("New Owner");
     await page.getByLabel("Share %").fill("90");
     await page.getByRole("button", { name: "Review transfer" }).click();
     await expect(page.getByText("Total 90%")).toBeVisible();

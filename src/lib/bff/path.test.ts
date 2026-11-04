@@ -96,7 +96,9 @@ describe("sanitizeBackendPath (users/me, shared by both surfaces)", () => {
   it("refuses other user routes on both relays", () => {
     for (const surface of ["client", "backoffice"] as const) {
       expect(sanitizeBackendPath(["users"], surface)).toBeNull();
-      expect(sanitizeBackendPath(["users", "3f2b8a52-0c4e-4d6e-9d56-0a8d1a7c9b11"], surface)).toBeNull();
+      expect(
+        sanitizeBackendPath(["users", "3f2b8a52-0c4e-4d6e-9d56-0a8d1a7c9b11"], surface),
+      ).toBeNull();
     }
   });
 });
