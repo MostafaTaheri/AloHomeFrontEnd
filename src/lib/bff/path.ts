@@ -3,11 +3,13 @@ import type { Surface } from "./surface";
 /**
  * Allowlists for the generic relays. Each surface can reach only its own resource trees, so the
  * BFF can never be turned into an open proxy to the API's other endpoints (health, OpenAPI,
- * authentication), and a client session can never address back-office routes.
+ * authentication), and a client session can never address back-office routes. `users/me` (the
+ * signed-in user's own name and mobile, shown in both headers) is the one route both surfaces share.
  */
 const ALLOWED_ROOTS: Record<Surface, readonly (readonly string[])[]> = {
-  client: [["schemes"], ["product"], ["organisations"], ["portfolio"]],
+  client: [["schemes"], ["product"], ["organisations"], ["portfolio"], ["users", "me"]],
   backoffice: [
+    ["users", "me"],
     ["backoffice", "schemes"],
     ["backoffice", "users"],
     ["backoffice", "pilot"],

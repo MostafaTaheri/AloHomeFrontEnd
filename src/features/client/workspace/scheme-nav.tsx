@@ -29,6 +29,7 @@ const ITEMS: Item[] = [
   { segment: "ai-review", label: "nav.aiReview", feature: "controlled-ai" },
   { segment: "reports", label: "nav.reports" },
   { segment: "property", label: "nav.property", feature: "scheme-structure" },
+  { segment: "members", label: "nav.members", permission: "ManageMembers" },
   { segment: "audit", label: "nav.auditLog", feature: "security-audit", permission: "ViewAudit" },
   { segment: "glossary", label: "nav.glossary" },
   { segment: "feedback", label: "nav.feedback", feature: "pilot-evidence" },

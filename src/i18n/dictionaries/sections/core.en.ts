@@ -78,6 +78,7 @@ export const coreEn = {
     feedback: "Feedback",
     budgets: "Budgets",
     property: "{Lots} and {committee}",
+    members: "Members",
     auditLog: "Audit log",
     glossary: "Glossary",
     portfolio: "Portfolio of {schemes}",

@@ -16,6 +16,15 @@ export function normalizeDigits(input: string): string {
 }
 
 /**
+ * Local (trunk-0) formats that belong to exactly one market. They don't overlap: an Iranian mobile
+ * is 11 digits starting 09, an Australian number 10 digits starting 02/03/04/07/08.
+ */
+const LOCAL_FORMATS: ReadonlyArray<{ pattern: RegExp; region: Region }> = [
+  { pattern: /^09\d{9}$/, region: "ir" },
+  { pattern: /^0[2-478]\d{8}$/, region: "au" },
+];
+
+/**
  * Turns what a person typed into the E.164-style number the API expects.
  *
  *   +989121234567   kept
@@ -24,8 +33,9 @@ export function normalizeDigits(input: string): string {
  *   0412 345 678    -> +61412345678    (Australia, local format)
  *   9121234567      -> +989121234567   (national number without the trunk 0)
  *
- * The region only decides how a number WITHOUT an international prefix is read; a number that
- * already carries its own country code is never rewritten.
+ * A number that already carries its own country code is never rewritten. A local number in a
+ * format only one market uses (09xxxxxxxxx is Iranian, 04xxxxxxxx Australian) is read as that
+ * market's whatever the UI region is; the region only decides the remaining, ambiguous input.
  */
 export function normalizePhone(input: string, region: Region): string {
   const cleaned = normalizeDigits(input);
@@ -34,11 +44,26 @@ export function normalizePhone(input: string, region: Region): string {
   const digits = cleaned.replace(/\D/g, "");
   if (digits.startsWith("00")) return `+${digits.slice(2)}`;
 
+  const local = LOCAL_FORMATS.find((f) => f.pattern.test(digits));
+  if (local) return `+${REGION_PROFILES[local.region].phoneCountryCode}${digits.slice(1)}`;
+
   const dial = REGION_PROFILES[region].phoneCountryCode;
   if (digits.startsWith("0")) return `+${dial}${digits.slice(1)}`;
   // A number that already starts with the country code and has the right length.
   if (digits.startsWith(dial) && digits.length >= dial.length + 9) return `+${digits}`;
   return `+${dial}${digits}`;
+}
+
+/** Country codes of the markets the product serves (and the API can send SMS to). */
+const SUPPORTED_DIAL_CODES = Object.values(REGION_PROFILES).map((p) => p.phoneCountryCode);
+
+/**
+ * Rejects numbers from other countries. Browser autofill can turn an Iranian mobile like
+ * 9398387629 into "+1 939-838-7629" (939 is also a North American area code), which is a valid
+ * E.164 number but not the one the person meant.
+ */
+function isSupportedCountry(phone: string): boolean {
+  return SUPPORTED_DIAL_CODES.some((code) => phone.startsWith(`+${code}`));
 }
 
 // Messages are translation keys; the UI resolves them with t() so errors follow the locale.
@@ -49,7 +74,12 @@ export function phoneSchemaFor(region: Region) {
   return z
     .string()
     .transform((value) => normalizePhone(value, region))
-    .pipe(z.string().regex(PHONE_REGEX, key("validation.phone")));
+    .pipe(
+      z
+        .string()
+        .regex(PHONE_REGEX, key("validation.phone"))
+        .refine(isSupportedCountry, key("validation.phone")),
+    );
 }
 
 export const otpSchema = z

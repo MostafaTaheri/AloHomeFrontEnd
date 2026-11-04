@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useI18n } from "@/i18n/provider";
+import { CurrentUser } from "./current-user";
 import { LocaleSwitcher } from "./locale-switcher";
 import { PreferenceBar } from "./preferences";
 import { SignOutButton } from "./sign-out-button";
@@ -43,11 +44,7 @@ export function ClientShell({
 
           <div className="ms-auto flex flex-wrap items-center gap-3">
             {inScheme ? <LocaleSwitcher /> : <PreferenceBar />}
-            {user.phoneNumber ? (
-              <span className="hidden text-sm text-muted sm:inline" dir="ltr">
-                {user.phoneNumber}
-              </span>
-            ) : null}
+            <CurrentUser surface="client" phoneNumber={user.phoneNumber} />
             <SignOutButton surface="client" />
           </div>
         </div>

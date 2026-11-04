@@ -1,7 +1,8 @@
 import { apiRequest } from "./client";
 import { asList, asPage, unwrap, type Page } from "./envelope";
-import { ActiveStatus, LotRole, SchemeRole } from "./finance/enums";
-import type { InsightFeedback, PilotMetrics, SchemeRoleName } from "./finance/types";
+import { ActiveStatus, LotRole } from "./finance/enums";
+import type { InsightFeedback, PilotMetrics } from "./finance/types";
+import type { LotRoleName } from "./property";
 
 /** Back-office calls. They always go through the staff relay (/api/bo/backend). */
 const call = <T>(path: string, options: Parameters<typeof apiRequest>[1] = {}) =>
@@ -38,13 +39,17 @@ export interface BoSchemeDetail extends BoScheme {
   lotSchemeResultItems: BoLot[];
 }
 
-export interface SchemeMember {
+/** A current occupant of a lot with an account (the panel's occupants), with name and phone. `id` is 0 when no LotResident row backs it yet. */
+export interface LotResident {
   id: number;
-  schemeId: number;
+  lotId: number;
   userId: string;
-  role: string;
-  status: string;
-  createdAt: string;
+  role: "Owner" | "FamilyMember" | "Tenant" | "Occupant" | string;
+  assignedAt: string;
+  firstName: string | null;
+  lastName: string | null;
+  fullName: string | null;
+  phoneNumber: string | null;
 }
 
 export interface AccessDeniedLog {
@@ -165,10 +170,14 @@ export const backofficeApi = {
     unwrap<unknown>(
       await call(`backoffice/schemes/${schemeId}/lots/${lotId}/vacate`, { method: "POST" }),
     ),
+  residents: async (schemeId: number, lotId: number, signal?: AbortSignal) =>
+    asList<LotResident>(
+      unwrap(await call(`backoffice/schemes/${schemeId}/lots/${lotId}/residents`, { signal })),
+    ),
   assignResident: async (
     schemeId: number,
     lotId: number,
-    input: { userId: string; role: "Owner" | "FamilyMember" },
+    input: { userId: string; role: LotRoleName },
   ) =>
     unwrap<unknown>(
       await call(`backoffice/schemes/${schemeId}/lots/${lotId}/residents`, {
@@ -182,12 +191,7 @@ export const backofficeApi = {
         method: "DELETE",
       }),
     ),
-  changeResidentRole: async (
-    schemeId: number,
-    lotId: number,
-    userId: string,
-    role: "Owner" | "FamilyMember",
-  ) =>
+  changeResidentRole: async (schemeId: number, lotId: number, userId: string, role: LotRoleName) =>
     unwrap<unknown>(
       await call(`backoffice/schemes/${schemeId}/lots/${lotId}/residents/${userId}/role`, {
         method: "POST",
@@ -198,7 +202,7 @@ export const backofficeApi = {
     schemeId: number,
     lotId: number,
     userId: string,
-    input: { toLotId: number; role: "Owner" | "FamilyMember" },
+    input: { toLotId: number; role: LotRoleName },
   ) =>
     unwrap<unknown>(
       await call(`backoffice/schemes/${schemeId}/lots/${lotId}/residents/${userId}/move`, {
@@ -207,32 +211,6 @@ export const backofficeApi = {
       }),
     ),
 
-  members: async (
-    schemeId: number,
-    params: { page?: number; pageSize?: number } = {},
-    signal?: AbortSignal,
-  ) =>
-    asPage<SchemeMember>(
-      unwrap(await call(`backoffice/schemes/${schemeId}/members`, { signal, query: params })),
-    ),
-  addMember: async (schemeId: number, input: { userId: string; role: SchemeRoleName }) =>
-    unwrap<SchemeMember>(
-      await call(`backoffice/schemes/${schemeId}/members`, {
-        method: "POST",
-        body: { userId: input.userId, role: SchemeRole.toNumber(input.role) },
-      }),
-    ),
-  changeMemberRole: async (schemeId: number, userId: string, role: SchemeRoleName) =>
-    unwrap<SchemeMember>(
-      await call(`backoffice/schemes/${schemeId}/members/${userId}/role`, {
-        method: "PUT",
-        body: { role: SchemeRole.toNumber(role) },
-      }),
-    ),
-  removeMember: async (schemeId: number, userId: string) =>
-    unwrap<unknown>(
-      await call(`backoffice/schemes/${schemeId}/members/${userId}`, { method: "DELETE" }),
-    ),
   accessDeniedLogs: async (
     params: { schemeId?: number; userId?: string; page?: number; pageSize?: number } = {},
     signal?: AbortSignal,

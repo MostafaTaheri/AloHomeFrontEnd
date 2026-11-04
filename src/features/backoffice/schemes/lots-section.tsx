@@ -13,12 +13,20 @@ import { EmptyState, ErrorState, InlineAlert, ListSkeleton } from "@/components/
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { useI18n } from "@/i18n/provider";
 import { describeError } from "@/lib/api/error";
-import { backofficeApi, type BoLot, type BoSchemeDetail } from "@/lib/api/backoffice";
-import { activeName } from "@/lib/api/finance/enums";
+import {
+  backofficeApi,
+  type BoLot,
+  type BoSchemeDetail,
+  type LotResident,
+} from "@/lib/api/backoffice";
+import { boMembersApi, memberLabel } from "@/lib/api/members";
+import { MemberSelect } from "@/components/forms/member-select";
+import { activeName, LotRole } from "@/lib/api/finance/enums";
+import { OCCUPANT_ROLES, type LotRoleName } from "@/lib/api/property";
 import { qk } from "@/lib/api/keys";
 import { profileFor, regionForJurisdiction } from "@/lib/region/config";
 import { useBoMutation } from "../use-bo-mutation";
-import { parsePositive, parsePostal, parseUserId, parseWhole } from "./parse";
+import { parsePositive, parsePostal, parseWhole } from "./parse";
 
 export function LotsSection({ scheme }: { scheme: BoSchemeDetail }) {
   const { t, fmt } = useI18n();
@@ -353,125 +361,190 @@ function LotForm({
   );
 }
 
-type LotRole = "Owner" | "FamilyMember";
+/** The resident's actual role; lists may serialise it as a name or a number. */
+function residentRole(r: LotResident): LotRoleName {
+  if (LotRole.isName(r.role)) return r.role;
+  return LotRole.fromNumber(Number(r.role)) ?? "Occupant";
+}
 
+/**
+ * Residents of one lot. People are picked from the building's active members, so a member added
+ * on either the back office or the building panel can be assigned here.
+ */
 function ResidentsPanel({ schemeId, lot }: { schemeId: number; lot: BoLot }) {
   const { t } = useI18n();
   const [userId, setUserId] = useState("");
-  const [role, setRole] = useState<LotRole>("Owner");
-  const [toLot, setToLot] = useState("");
+  const [role, setRole] = useState<LotRoleName>("Tenant");
   const [touched, setTouched] = useState(false);
+  const invalidate = [["bo", "scheme", schemeId]];
 
-  const id = parseUserId(userId);
-  const toLotV = parseWhole(toLot, 999_999_999);
-  const done = () => setTouched(false);
+  const residents = useQuery({
+    queryKey: qk.bo.residents(schemeId, lot.id),
+    queryFn: ({ signal }) => backofficeApi.residents(schemeId, lot.id, signal),
+  });
+  const options = useQuery({
+    queryKey: qk.bo.memberOptions(schemeId),
+    queryFn: ({ signal }) => boMembersApi.options(schemeId, signal),
+  });
+  const lotsParams = { page: 1, pageSize: 200 };
+  const lots = useQuery({
+    queryKey: qk.bo.lots(schemeId, lotsParams),
+    queryFn: ({ signal }) => backofficeApi.lots(schemeId, lotsParams, signal),
+  });
 
   const assign = useBoMutation({
-    mutationFn: () => backofficeApi.assignResident(schemeId, lot.id, { userId: id!, role }),
-    invalidate: [["bo", "scheme", schemeId]],
+    mutationFn: () => backofficeApi.assignResident(schemeId, lot.id, { userId, role }),
+    invalidate,
     success: "backoffice.assigned",
-    onSuccess: done,
+    onSuccess: () => {
+      setUserId("");
+      setTouched(false);
+    },
   });
   const change = useBoMutation({
-    mutationFn: () => backofficeApi.changeResidentRole(schemeId, lot.id, id!, role),
-    invalidate: [["bo", "scheme", schemeId]],
+    mutationFn: (vars: { userId: string; role: LotRoleName }) =>
+      backofficeApi.changeResidentRole(schemeId, lot.id, vars.userId, vars.role),
+    invalidate,
     success: "backoffice.roleChanged",
-    onSuccess: done,
   });
   const remove = useBoMutation({
-    mutationFn: () => backofficeApi.removeResident(schemeId, lot.id, id!),
-    invalidate: [["bo", "scheme", schemeId]],
+    mutationFn: (resident: LotResident) =>
+      backofficeApi.removeResident(schemeId, lot.id, resident.userId),
+    invalidate,
     success: "backoffice.removed",
-    onSuccess: done,
   });
   const move = useBoMutation({
-    mutationFn: () => backofficeApi.moveResident(schemeId, lot.id, id!, { toLotId: toLotV!, role }),
-    invalidate: [["bo", "scheme", schemeId]],
+    mutationFn: (vars: { userId: string; toLotId: number; role: LotRoleName }) =>
+      backofficeApi.moveResident(schemeId, lot.id, vars.userId, {
+        toLotId: vars.toLotId,
+        role: vars.role,
+      }),
+    invalidate,
     success: "backoffice.moved",
-    onSuccess: done,
   });
   const busy = assign.isPending || change.isPending || remove.isPending || move.isPending;
-
-  function run(action: () => void, needsLot = false) {
-    setTouched(true);
-    if (!id || busy || (needsLot && toLotV === null)) return;
-    action();
-  }
+  const assigned = (residents.data ?? []).map((r) => r.userId);
+  const otherLots = (lots.data?.items ?? []).filter((l) => l.id !== lot.id);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <p className="text-sm text-muted">{t("backoffice.residentsBody")}</p>
-      <Field
-        id="res-user"
-        label={t("backoffice.userId")}
-        error={touched && !id ? t("backoffice.userIdInvalid") : undefined}
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold">{t("backoffice.currentResidents")}</h3>
+        {residents.isPending ? <ListSkeleton rows={2} /> : null}
+        {residents.isError ? (
+          <ErrorState error={residents.error} onRetry={() => void residents.refetch()} />
+        ) : null}
+        {residents.data && residents.data.length === 0 ? (
+          <p className="text-sm text-muted">{t("backoffice.noResidents")}</p>
+        ) : null}
+        {residents.data && residents.data.length > 0 ? (
+          <ul className="divide-y divide-line rounded-md border border-line">
+            {residents.data.map((r) => (
+              <li key={r.userId} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                <div className="min-w-40 flex-1">
+                  <p className="text-sm font-medium">{memberLabel(r)}</p>
+                  {r.phoneNumber ? (
+                    <p dir="ltr" className="text-start text-xs text-muted tabular-nums">
+                      {r.phoneNumber}
+                    </p>
+                  ) : null}
+                </div>
+                <Select
+                  id={`res-role-${r.userId}`}
+                  aria-label={t("backoffice.changeRole")}
+                  className="h-8 w-36"
+                  value={residentRole(r)}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const next = e.target.value as LotRoleName;
+                    if (next !== residentRole(r)) change.mutate({ userId: r.userId, role: next });
+                  }}
+                >
+                  {OCCUPANT_ROLES.map((lr) => (
+                    <option key={lr} value={lr}>
+                      {t(`enums.lotRole.${lr}`)}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  id={`res-move-${r.userId}`}
+                  aria-label={t("backoffice.moveResident")}
+                  className="h-8 w-40"
+                  value=""
+                  disabled={busy || otherLots.length === 0}
+                  onChange={(e) => {
+                    const toLotId = Number(e.target.value);
+                    if (toLotId > 0)
+                      move.mutate({ userId: r.userId, toLotId, role: residentRole(r) });
+                  }}
+                >
+                  <option value="">{t("backoffice.moveResident")}</option>
+                  {otherLots.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.lotNumber}
+                    </option>
+                  ))}
+                </Select>
+                <Button size="sm" variant="danger" disabled={busy} onClick={() => remove.mutate(r)}>
+                  {t("backoffice.removeResident")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
+      <form
+        noValidate
+        className="space-y-3 border-t border-line pt-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setTouched(true);
+          if (!userId || busy) return;
+          assign.mutate(undefined);
+        }}
       >
-        <Input
+        <Field
           id="res-user"
-          dir="ltr"
-          value={userId}
-          invalid={touched && !id}
-          onChange={(e) => setUserId(e.target.value)}
-        />
-      </Field>
-      <Field id="res-role" label={t("backoffice.lotRole")}>
-        <Select id="res-role" value={role} onChange={(e) => setRole(e.target.value as LotRole)}>
-          <option value="Owner">{t("enums.lotRole.Owner")}</option>
-          <option value="FamilyMember">{t("enums.lotRole.FamilyMember")}</option>
-        </Select>
-      </Field>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          loading={assign.isPending}
-          onClick={() => run(() => assign.mutate(undefined))}
+          label={t("members.pick")}
+          error={touched && !userId ? t("members.pickRequired") : undefined}
         >
-          {t("backoffice.assign")}
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          loading={change.isPending}
-          onClick={() => run(() => change.mutate(undefined))}
-        >
-          {t("backoffice.changeRole")}
-        </Button>
-        <Button
-          size="sm"
-          variant="danger"
-          loading={remove.isPending}
-          onClick={() => run(() => remove.mutate(undefined))}
-        >
-          {t("backoffice.removeResident")}
-        </Button>
-      </div>
-      <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3">
-        <div className="w-40">
-          <Field
-            id="res-move"
-            label={t("backoffice.moveTo")}
-            error={
-              touched && toLot !== "" && toLotV === null ? t("backoffice.wholeInvalid") : undefined
-            }
-          >
-            <Input
-              id="res-move"
-              dir="ltr"
-              inputMode="numeric"
-              value={toLot}
-              onChange={(e) => setToLot(e.target.value)}
-            />
-          </Field>
+          <MemberSelect
+            id="res-user"
+            options={options.data}
+            loading={options.isPending}
+            value={userId}
+            exclude={assigned}
+            invalid={touched && !userId}
+            onChange={setUserId}
+          />
+        </Field>
+        {options.isError ? (
+          <InlineAlert tone="danger">{describeError(options.error, t)}</InlineAlert>
+        ) : null}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-44">
+            <Field id="res-role" label={t("backoffice.lotRole")}>
+              <Select
+                id="res-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as LotRoleName)}
+              >
+                {OCCUPANT_ROLES.map((lr) => (
+                  <option key={lr} value={lr}>
+                    {t(`enums.lotRole.${lr}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <Button type="submit" size="sm" loading={assign.isPending}>
+            {t("backoffice.assign")}
+          </Button>
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          loading={move.isPending}
-          onClick={() => run(() => move.mutate(undefined), true)}
-        >
-          {t("backoffice.moveResident")}
-        </Button>
-      </div>
+      </form>
     </div>
   );
 }

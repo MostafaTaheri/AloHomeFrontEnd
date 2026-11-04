@@ -1,0 +1,51 @@
+import type { Dictionary } from "../en";
+
+type Members = Pick<Dictionary, "members">;
+
+export const membersFa: Members = {
+  members: {
+    title: "اعضا",
+    subtitle:
+      "افرادی که به این {scheme} دسترسی دارند. آن‌ها را با شماره موبایل اضافه کنید؛ اگر حساب نداشته باشند، حساب ساخته می‌شود.",
+    readOnly: "نقش شما می‌تواند {scheme} را ببیند اما نمی‌تواند اعضا را مدیریت کند.",
+    add: "افزودن عضو",
+    edit: "ویرایش عضو",
+    search: "جستجو با نام یا موبایل",
+    roleFilter: "نقش",
+    allRoles: "همه نقش‌ها",
+    includeRevoked: "نمایش اعضای حذف‌شده",
+    colName: "نام",
+    colPhone: "موبایل",
+    colRole: "نقش",
+    colStatus: "وضعیت",
+    colSince: "عضو از",
+    firstName: "نام",
+    lastName: "نام خانوادگی",
+    phone: "شماره موبایل",
+    phoneHint: "برای مثال {example}.",
+    phoneLocked:
+      "شماره موبایل شناسه حساب است و اینجا قابل تغییر نیست. عضو را حذف کنید و شماره جدید را اضافه کنید.",
+    role: "نقش",
+    nameRequired: "نام و نام خانوادگی را وارد کنید.",
+    save: "ذخیره",
+    added: "عضو اضافه شد.",
+    updated: "عضو به‌روزرسانی شد.",
+    removed: "عضو حذف شد.",
+    removeTitle: "این عضو حذف شود؟",
+    removeBody: "دسترسی {name} به این {scheme} قطع می‌شود. سوابق او حفظ می‌شود.",
+    empty: "هنوز عضوی وجود ندارد.",
+    emptyBody: "افرادی را که این {scheme} را مدیریت یا دنبال می‌کنند اضافه کنید.",
+    emptyFiltered: "هیچ عضوی با این فیلترها پیدا نشد.",
+    noName: "هنوز نامی ثبت نشده",
+    statusActive: "فعال",
+    statusRevoked: "حذف‌شده",
+    pick: "یک عضو انتخاب کنید",
+    pickFilter: "فیلتر فهرست",
+    pickLoading: "در حال بارگذاری اعضا…",
+    pickEmpty: "این {scheme} هنوز عضوی ندارد. اعضا را در صفحه اعضا اضافه کنید.",
+    pickRequired: "یک عضو انتخاب کنید.",
+    notMember: "فردی بدون حساب کاربری…",
+    partyName: "نام شخص یا شرکت",
+    partyHint: "فقط با نام ثبت می‌شود و امکان ورود نخواهد داشت.",
+  },
+};

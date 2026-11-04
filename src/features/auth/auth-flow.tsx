@@ -212,7 +212,7 @@ export function AuthFlow({
                 name="phone"
                 type="tel"
                 inputMode="tel"
-                autoComplete="tel"
+                autoComplete="username"
                 dir="ltr"
                 className="text-start"
                 value={phone}

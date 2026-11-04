@@ -87,7 +87,7 @@ export const portfolioApi = {
 /** The workspace page that completes each onboarding step, relative to the scheme. */
 export const ONBOARDING_LINKS: Record<string, string> = {
   lots: "property",
-  members: "property?tab=committee",
+  members: "members",
   "office-holders": "property?tab=committee",
   "first-import": "imports",
   "first-verified": "imports",

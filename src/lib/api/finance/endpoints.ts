@@ -61,8 +61,13 @@ export const schemesApi = {
     asList<SchemeSummary>(unwrap(await apiRequest("schemes/mine", opts))),
   context: async (schemeId: number, opts: Signal = {}) =>
     unwrap<SchemeContext>(await apiRequest(scheme(schemeId, "context"), opts)),
+  /** Every lot of the building for members (the API caps a page at 500); the tab searches client-side. */
   lots: async (schemeId: number, opts: Signal = {}) =>
-    asList<LotSummary>(unwrap(await apiRequest(scheme(schemeId, "lots"), opts))),
+    asList<LotSummary>(
+      unwrap(
+        await apiRequest(scheme(schemeId, "lots"), { ...opts, query: { page: 1, pageSize: 500 } }),
+      ),
+    ),
 };
 
 // ----------------------------------------------------------------- imports

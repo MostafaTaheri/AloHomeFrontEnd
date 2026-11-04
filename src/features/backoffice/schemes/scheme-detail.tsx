@@ -76,7 +76,7 @@ export function SchemeDetail({ schemeId }: { schemeId: number }) {
       </nav>
 
       {tab === "lots" ? <LotsSection scheme={scheme} /> : null}
-      {tab === "members" ? <MembersSection schemeId={schemeId} /> : null}
+      {tab === "members" ? <MembersSection scheme={scheme} /> : null}
       {tab === "details" ? <DetailsSection scheme={scheme} /> : null}
       {tab === "case-study" ? <CaseStudySection schemeId={schemeId} /> : null}
     </div>
