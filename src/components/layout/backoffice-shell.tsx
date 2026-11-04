@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
+import { CurrentUser } from "./current-user";
 import { PreferenceBar } from "./preferences";
 import { SignOutButton } from "./sign-out-button";
 
@@ -70,11 +71,7 @@ export function BackofficeShell({
           </nav>
           <div className="ms-auto flex flex-wrap items-center gap-3">
             <PreferenceBar />
-            {user.phoneNumber ? (
-              <span className="hidden text-sm text-muted sm:inline" dir="ltr">
-                {user.phoneNumber}
-              </span>
-            ) : null}
+            <CurrentUser surface="backoffice" phoneNumber={user.phoneNumber} />
             <SignOutButton surface="backoffice" />
           </div>
         </div>

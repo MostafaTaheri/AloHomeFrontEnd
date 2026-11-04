@@ -1,5 +1,6 @@
 import { parseUserId } from "@/features/backoffice/schemes/parse";
 import { normalizeNumeric } from "@/lib/format/amount";
+import { NOT_A_MEMBER } from "@/lib/api/members";
 import type { NewOwner, Party } from "@/lib/api/property";
 
 /** A share in percent: above 0, at most 100, at most two decimals. Accepts Persian digits. */
@@ -21,8 +22,26 @@ export function parseParty(text: string): Party | null {
   return userId ? { userId } : { partyName: v.slice(0, 200) };
 }
 
+/**
+ * An owner or occupant picked in a form: one of the building's members (choice = their user id),
+ * or, with choice = NOT_A_MEMBER, a name for someone without an account.
+ */
+export interface PartyInput {
+  choice: string;
+  name: string;
+}
+
+export const EMPTY_PARTY: PartyInput = { choice: "", name: "" };
+
+export function partyFrom(input: PartyInput): Party | null {
+  if (!input.choice) return null;
+  if (input.choice !== NOT_A_MEMBER) return { userId: input.choice };
+  const name = input.name.trim();
+  return name ? { partyName: name.slice(0, 200) } : null;
+}
+
 export interface OwnerRow {
-  party: string;
+  party: PartyInput;
   share: string;
 }
 
@@ -37,7 +56,7 @@ export interface TransferCheck {
 
 export function checkTransfer(rows: OwnerRow[]): TransferCheck {
   const parsed = rows.map((row) => ({
-    party: parseParty(row.party),
+    party: partyFrom(row.party),
     share: parseShare(row.share),
   }));
   const total = Math.round(parsed.reduce((sum, r) => sum + (r.share ?? 0), 0) * 100) / 100;

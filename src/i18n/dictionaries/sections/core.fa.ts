@@ -85,6 +85,7 @@ export const coreFa: Core = {
     feedback: "بازخورد",
     budgets: "بودجه",
     property: "{Lots} و {committee}",
+    members: "اعضا",
     auditLog: "گزارش ممیزی",
     glossary: "واژه‌نامه",
     portfolio: "سبد {schemes}",

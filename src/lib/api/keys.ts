@@ -58,6 +58,9 @@ export const qk = {
   feedback: (id: number, params: object) => ["scheme", id, "feedback", params] as const,
 
   property: (id: number) => ["scheme", id, "property"] as const,
+  members: (id: number) => ["scheme", id, "members"] as const,
+  memberList: (id: number, params: object) => ["scheme", id, "members", "list", params] as const,
+  memberOptions: (id: number) => ["scheme", id, "members", "options"] as const,
   tenures: (id: number, lotId: number) => ["scheme", id, "property", "tenures", lotId] as const,
   holders: (id: number, lotId: number, asOf: string) =>
     ["scheme", id, "property", "holders", lotId, asOf] as const,
@@ -89,6 +92,8 @@ export const qk = {
     ["product", "dictionary", jurisdiction, locale] as const,
   governance: ["product", "governance"] as const,
   myOrganisations: ["organisations", "mine"] as const,
+  /** The signed-in user per surface; invalidate `["me"]` after a name change. */
+  me: (surface: "client" | "backoffice") => ["me", surface] as const,
   portfolio: (organisationId: number | null) => ["portfolio", organisationId] as const,
 
   bo: {
@@ -96,6 +101,8 @@ export const qk = {
     scheme: (id: number) => ["bo", "scheme", id] as const,
     lots: (id: number, params: object) => ["bo", "scheme", id, "lots", params] as const,
     members: (id: number, params: object) => ["bo", "scheme", id, "members", params] as const,
+    memberOptions: (id: number) => ["bo", "scheme", id, "member-options"] as const,
+    residents: (id: number, lotId: number) => ["bo", "scheme", id, "residents", lotId] as const,
     audit: (params: object) => ["bo", "audit", params] as const,
     pilotMetrics: (id: number) => ["bo", "pilot", id] as const,
     pilotFeedback: (params: object) => ["bo", "pilot", "feedback", params] as const,

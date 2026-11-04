@@ -87,6 +87,22 @@ describe("sanitizeBackendPath (back-office relay)", () => {
   });
 });
 
+describe("sanitizeBackendPath (users/me, shared by both surfaces)", () => {
+  it("allows the signed-in user's profile on both relays", () => {
+    expect(sanitizeBackendPath(["users", "me"])).toBe("users/me");
+    expect(sanitizeBackendPath(["Users", "Me"], "backoffice")).toBe("users/me");
+  });
+
+  it("refuses other user routes on both relays", () => {
+    for (const surface of ["client", "backoffice"] as const) {
+      expect(sanitizeBackendPath(["users"], surface)).toBeNull();
+      expect(
+        sanitizeBackendPath(["users", "3f2b8a52-0c4e-4d6e-9d56-0a8d1a7c9b11"], surface),
+      ).toBeNull();
+    }
+  });
+});
+
 describe("isUploadPath", () => {
   const id = "3f2b8a52-0c4e-4d6e-9d56-0a8d1a7c9b11";
 

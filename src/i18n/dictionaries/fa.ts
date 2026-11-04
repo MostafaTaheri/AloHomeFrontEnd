@@ -16,6 +16,7 @@ import { recordsFa } from "./sections/records.fa";
 import { budgetsFa } from "./sections/budgets.fa";
 import { planningFa } from "./sections/planning.fa";
 import { aidocsFa } from "./sections/aidocs.fa";
+import { membersFa } from "./sections/members.fa";
 
 export const fa: Dictionary = {
   ...coreFa,
@@ -35,4 +36,5 @@ export const fa: Dictionary = {
   ...budgetsFa,
   ...planningFa,
   ...aidocsFa,
+  ...membersFa,
 };

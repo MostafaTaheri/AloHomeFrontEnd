@@ -25,6 +25,12 @@ describe("normalizePhone", () => {
     expect(normalizePhone("(04) 1234-5678", "au")).toBe("+61412345678");
   });
 
+  it("reads a local format only one market uses as that market, whatever the region", () => {
+    expect(normalizePhone("09124854218", "au")).toBe("+989124854218");
+    expect(normalizePhone("0912 485 4218", "au")).toBe("+989124854218");
+    expect(normalizePhone("0412345678", "ir")).toBe("+61412345678");
+  });
+
   it("accepts a national number without the trunk zero", () => {
     expect(normalizePhone("9121234567", "ir")).toBe("+989121234567");
     expect(normalizePhone("412345678", "au")).toBe("+61412345678");
@@ -51,6 +57,15 @@ describe("phoneSchemaFor / otpSchema", () => {
     expect(phoneSchemaFor("ir").safeParse("+9891212345").success).toBe(false);
     expect(phoneSchemaFor("ir").safeParse("+989121234567890").success).toBe(false);
     expect(phoneSchemaFor("au").safeParse("").success).toBe(false);
+  });
+
+  it("rejects numbers from countries the product does not serve", () => {
+    // What browser autofill makes of 9398387629 with a US profile.
+    expect(phoneSchemaFor("ir").safeParse("+1 939-838-7629").success).toBe(false);
+    expect(phoneSchemaFor("ir").safeParse("+19398387629").success).toBe(false);
+    expect(phoneSchemaFor("ir").parse("+989398387629")).toBe("+989398387629");
+    expect(phoneSchemaFor("ir").parse("09398387629")).toBe("+989398387629");
+    expect(phoneSchemaFor("ir").parse("+61412345678")).toBe("+61412345678");
   });
 
   it("requires exactly six digits for the code", () => {

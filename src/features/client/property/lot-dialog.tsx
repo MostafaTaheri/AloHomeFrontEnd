@@ -13,11 +13,20 @@ import { useI18n } from "@/i18n/provider";
 import { describeError } from "@/lib/api/error";
 import type { LotSummary } from "@/lib/api/finance/types";
 import { qk } from "@/lib/api/keys";
-import { propertyApi, type LotRoleName, type LotTenure } from "@/lib/api/property";
+import { OCCUPANT_ROLES, propertyApi, type LotRoleName, type LotTenure } from "@/lib/api/property";
 import { todayIso } from "@/lib/region/dates";
 import { useSchemeMutation } from "../use-scheme-mutation";
 import { useScheme } from "../workspace/scheme-provider";
-import { checkTransfer, datesInOrder, parseParty, type OwnerRow } from "./parse";
+import { MemberSelect } from "@/components/forms/member-select";
+import { NOT_A_MEMBER, schemeMembersApi } from "@/lib/api/members";
+import {
+  checkTransfer,
+  datesInOrder,
+  EMPTY_PARTY,
+  partyFrom,
+  type OwnerRow,
+  type PartyInput,
+} from "./parse";
 
 type Mode = "view" | "transfer" | "occupy";
 
@@ -38,6 +47,8 @@ export function LotDialog({ lot, onClose }: { lot: LotSummary | null; onClose: (
 /** A tenure's holder: an AloHome account, or the name recorded for someone without one. */
 export function usePartyLabel() {
   const { t } = useI18n();
+  const options = useMemberOptions();
+  const names = new Map((options.data ?? []).map((o) => [o.userId, o.displayName]));
   return (holder: {
     userId: string | null;
     partyName?: string | null;
@@ -46,10 +57,90 @@ export function usePartyLabel() {
   }) => {
     if (holder.partyName) return holder.partyName;
     if (holder.externalName) return holder.externalName;
-    if (holder.userId) return t("property.account", { id: holder.userId.slice(0, 8) });
+    if (holder.userId)
+      return names.get(holder.userId) ?? t("property.account", { id: holder.userId.slice(0, 8) });
     if (holder.organisationId) return t("property.organisation", { id: holder.organisationId });
     return t("common.none");
   };
+}
+
+/** The building's active members, for owner and occupant pickers (needs ManageProperty). */
+export function useMemberOptions() {
+  const { schemeId, can } = useScheme();
+  return useQuery({
+    queryKey: qk.memberOptions(schemeId),
+    queryFn: ({ signal }) => schemeMembersApi.options(schemeId, signal),
+    enabled: can("ManageProperty"),
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Who owns or occupies: one of the building's members, or (via the last entry) a name for
+ * someone without an account.
+ */
+function PartyPicker({
+  id,
+  label,
+  hint,
+  value,
+  onChange,
+  touched,
+  exclude,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  value: PartyInput;
+  onChange: (value: PartyInput) => void;
+  touched: boolean;
+  exclude?: readonly string[];
+}) {
+  const { t } = useI18n();
+  const options = useMemberOptions();
+  const manual = value.choice === NOT_A_MEMBER;
+  const missingChoice = touched && !value.choice;
+  const missingName = touched && manual && !value.name.trim();
+
+  return (
+    <div className="space-y-3">
+      <Field
+        id={id}
+        label={label}
+        hint={hint}
+        error={missingChoice ? t("members.pickRequired") : undefined}
+      >
+        <MemberSelect
+          id={id}
+          options={options.data}
+          loading={options.isPending}
+          value={value.choice}
+          allowNotMember
+          exclude={exclude}
+          hasHint={Boolean(hint)}
+          invalid={missingChoice}
+          onChange={(choice) => onChange({ ...value, choice })}
+        />
+      </Field>
+      {manual ? (
+        <Field
+          id={`${id}-name`}
+          label={t("members.partyName")}
+          hint={t("members.partyHint")}
+          error={missingName ? t("property.partyRequired") : undefined}
+        >
+          <Input
+            id={`${id}-name`}
+            maxLength={200}
+            value={value.name}
+            hasHint
+            invalid={missingName}
+            onChange={(e) => onChange({ ...value, name: e.target.value })}
+          />
+        </Field>
+      ) : null}
+    </div>
+  );
 }
 
 function LotBody({ lot }: { lot: LotSummary }) {
@@ -209,7 +300,7 @@ function TransferForm({ lotId, onDone }: { lotId: number; onDone: () => void }) 
   const { schemeId } = useScheme();
   const [date, setDate] = useState("");
   const [reference, setReference] = useState("");
-  const [rows, setRows] = useState<OwnerRow[]>([{ party: "", share: "100" }]);
+  const [rows, setRows] = useState<OwnerRow[]>([{ party: EMPTY_PARTY, share: "100" }]);
   const [touched, setTouched] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const check = checkTransfer(rows);
@@ -273,21 +364,17 @@ function TransferForm({ lotId, onDone }: { lotId: number; onDone: () => void }) 
         {rows.map((row, i) => (
           <div key={i} className="flex flex-wrap items-end gap-3">
             <div className="min-w-56 flex-1">
-              <Field
+              <PartyPicker
                 id={`owner-${i}`}
                 label={t("property.ownerParty")}
-                hint={i === 0 ? t("property.partyHint") : undefined}
-                error={
-                  touched && check.rows[i] === "party" ? t("property.partyRequired") : undefined
-                }
-              >
-                <Input
-                  id={`owner-${i}`}
-                  value={row.party}
-                  invalid={touched && check.rows[i] === "party"}
-                  onChange={(e) => update(i, { party: e.target.value })}
-                />
-              </Field>
+                value={row.party}
+                touched={touched}
+                exclude={rows
+                  .filter((_, j) => j !== i)
+                  .map((r) => r.party.choice)
+                  .filter((c) => c && c !== NOT_A_MEMBER)}
+                onChange={(party) => update(i, { party })}
+              />
             </div>
             <div className="w-28">
               <Field
@@ -324,7 +411,7 @@ function TransferForm({ lotId, onDone }: { lotId: number; onDone: () => void }) 
             variant="secondary"
             size="sm"
             disabled={rows.length >= 10}
-            onClick={() => setRows((current) => [...current, { party: "", share: "" }])}
+            onClick={() => setRows((current) => [...current, { party: EMPTY_PARTY, share: "" }])}
           >
             {t("property.addOwner")}
           </Button>
@@ -366,18 +453,16 @@ function TransferForm({ lotId, onDone }: { lotId: number; onDone: () => void }) 
   );
 }
 
-const OCCUPANT_ROLES: LotRoleName[] = ["Tenant", "Occupant", "FamilyMember", "Owner"];
-
 function OccupancyForm({ lotId, onDone }: { lotId: number; onDone: () => void }) {
   const { t } = useI18n();
   const { schemeId } = useScheme();
   const [role, setRole] = useState<LotRoleName>("Tenant");
-  const [who, setWho] = useState("");
+  const [who, setWho] = useState<PartyInput>(EMPTY_PARTY);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reference, setReference] = useState("");
   const [touched, setTouched] = useState(false);
-  const party = parseParty(who);
+  const party = partyFrom(who);
   const orderOk = datesInOrder(start, end);
 
   const save = useSchemeMutation({
@@ -421,19 +506,13 @@ function OccupancyForm({ lotId, onDone }: { lotId: number; onDone: () => void })
             ))}
           </Select>
         </Field>
-        <Field
+        <PartyPicker
           id="occ-who"
           label={t("property.ownerParty")}
-          hint={t("property.partyHint")}
-          error={touched && !party ? t("property.partyRequired") : undefined}
-        >
-          <Input
-            id="occ-who"
-            value={who}
-            invalid={touched && !party}
-            onChange={(e) => setWho(e.target.value)}
-          />
-        </Field>
+          value={who}
+          touched={touched}
+          onChange={setWho}
+        />
         <Field
           id="occ-start"
           label={t("property.startDate")}

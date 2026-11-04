@@ -359,18 +359,18 @@ function createScheme({ title, address, jurisdictionCode, seed, demo = false, wi
     reports: [],
     feedback: [],
     members: [
-      [MANAGER_ID, "Manager"],
-      [TREASURER_ID, "Treasurer"],
-      [ANALYST_ID, "Analyst"],
-      [COMMITTEE_ID, "CommitteeMember"],
-    ].map(([userId, role], i) => ({
-      id: i + 1,
-      schemeId: id,
-      userId,
-      role,
-      status: "Active",
-      createdAt: "2026-07-01T09:00:00Z",
-    })),
+      [MANAGER_ID, "Manager", "Maryam", "Hosseini", "+989121110001"],
+      [TREASURER_ID, "Treasurer", "Daniel", "Nguyen", "+61412000002"],
+      [ANALYST_ID, "Analyst", "Sara", "Ahmadi", "+989121110003"],
+      [COMMITTEE_ID, "CommitteeMember", "Olivia", "Brown", "+61412000004"],
+    ].map(([userId, role, firstName, lastName, phoneNumber], i) =>
+      memberRecord(
+        id,
+        i + 1,
+        { userId, role, firstName, lastName, phoneNumber },
+        "2026-07-01T09:00:00Z",
+      ),
+    ),
     residents: new Map(),
   };
 
@@ -1743,6 +1743,121 @@ function minimalPdf(title) {
 // ------------------------------------------------------------------ client routes
 
 /** The caller's role on a scheme. Accounts that are not members manage it, as before. */
+function memberRecord(schemeId, id, person, createdAt = nowUtc()) {
+  const fullName = `${person.firstName ?? ""} ${person.lastName ?? ""}`.trim() || null;
+  return {
+    id,
+    schemeId,
+    userId: person.userId,
+    role: person.role,
+    status: "Active",
+    createdAt,
+    firstName: person.firstName ?? null,
+    lastName: person.lastName ?? null,
+    fullName,
+    phoneNumber: person.phoneNumber ?? null,
+    userStatus: "Active",
+  };
+}
+
+/** memberRoutes did not match the request. */
+const NOT_HANDLED = Symbol("not handled");
+
+/** People known to the mock across schemes, by phone, so adding the same phone reuses the user. */
+const PEOPLE = new Map();
+
+/**
+ * Members of a scheme. Shared by the back office (`panel` false) and the building panel, which
+ * needs ManageMembers (or ManageProperty for the dropdown options).
+ */
+async function memberRoutes(req, res, s, sub, q, { panel, user }) {
+  const m = req.method;
+  const active = () => s.members.filter((x) => x.status === "Active");
+  const managers = () => active().filter((x) => x.role === "Manager").length;
+  if (sub === "members/options" && m === "GET") {
+    if (panel && !can(s, user, "ManageProperty")) return forbidden(res);
+    return ok(
+      res,
+      active().map((x) => ({
+        userId: x.userId,
+        displayName: x.fullName ?? x.phoneNumber ?? x.userId,
+        phoneNumber: x.phoneNumber,
+        role: x.role,
+      })),
+    );
+  }
+  if (panel && !can(s, user, "ManageMembers")) return forbidden(res);
+  if (sub === "members" && m === "GET") {
+    const needle = (q.get("search") ?? "").trim().toLowerCase();
+    const role = q.get("role") ? fromEnum(E.schemeRole, Number(q.get("role"))) : null;
+    const includeRevoked = q.get("includeRevoked") === "true";
+    const items = s.members.filter(
+      (x) =>
+        (includeRevoked || x.status === "Active") &&
+        (!role || x.role === role) &&
+        (!needle ||
+          (x.fullName ?? "").toLowerCase().includes(needle) ||
+          (x.phoneNumber ?? "").includes(needle.replace(/\s/g, ""))),
+    );
+    return ok(res, pageOf(items, q));
+  }
+  if (sub === "members" && m === "POST") {
+    const body = await readJson(req);
+    const role = fromEnum(E.schemeRole, body.role) ?? "ReadOnly";
+    const phone = String(body.phoneNumber ?? "");
+    if (!body.userId && !/^\+\d{11,14}$/.test(phone))
+      return fail(res, 400, "170019", "Enter a valid phone number.");
+    const known =
+      s.members.find((x) => (body.userId ? x.userId === body.userId : x.phoneNumber === phone)) ??
+      PEOPLE.get(phone);
+    if (!known && !body.userId && !(body.firstName?.trim() && body.lastName?.trim()))
+      return fail(res, 400, "310009", "First and last name are required for a new member.");
+    const existing = s.members.find((x) => x.userId === (known?.userId ?? body.userId));
+    if (existing?.status === "Active")
+      return fail(res, 400, "310003", "User is already a member of this scheme.");
+    const person = {
+      userId: known?.userId ?? body.userId ?? randomUUID(),
+      firstName: known?.firstName || body.firstName?.trim() || null,
+      lastName: known?.lastName || body.lastName?.trim() || null,
+      phoneNumber: known?.phoneNumber ?? (phone || null),
+      role,
+    };
+    if (person.phoneNumber) PEOPLE.set(person.phoneNumber, person);
+    if (existing) {
+      Object.assign(existing, { role, status: "Active" });
+      return ok(res, existing);
+    }
+    const member = memberRecord(s.id, Math.max(0, ...s.members.map((x) => x.id)) + 1, person);
+    s.members.push(member);
+    return ok(res, member);
+  }
+  const match = /^members\/([^/]+)(\/role)?$/.exec(sub ?? "");
+  if (!match) return NOT_HANDLED;
+  const member = s.members.find((x) => x.userId === match[1]);
+  if (!member) return notFound(res, "Member");
+  if (!match[2] && m === "GET") return ok(res, member);
+  if (m === "PUT") {
+    const body = await readJson(req);
+    const role = fromEnum(E.schemeRole, body.role) ?? member.role;
+    if (panel && member.role === "Manager" && role !== "Manager" && managers() <= 1)
+      return fail(res, 400, "310006", "The scheme must keep at least one manager.");
+    member.role = role;
+    if (body.firstName?.trim() && body.lastName?.trim()) {
+      member.firstName = body.firstName.trim();
+      member.lastName = body.lastName.trim();
+      member.fullName = `${member.firstName} ${member.lastName}`;
+    }
+    return ok(res, member);
+  }
+  if (!match[2] && m === "DELETE") {
+    if (panel && member.role === "Manager" && managers() <= 1)
+      return fail(res, 400, "310006", "The scheme must keep at least one manager.");
+    member.status = "Revoked";
+    return ok(res);
+  }
+  return NOT_HANDLED;
+}
+
 function roleOf(s, userId) {
   return s.members.find((x) => x.userId === userId && x.status === "Active")?.role ?? "Manager";
 }
@@ -1756,6 +1871,11 @@ const forbidden = (res) =>
 async function schemeRoutes(req, res, s, rest, q, lang, user) {
   const m = req.method;
   let match;
+
+  if (rest === "members" || rest.startsWith("members/")) {
+    const handled = await memberRoutes(req, res, s, rest, q, { panel: true, user });
+    if (handled !== NOT_HANDLED) return handled;
+  }
 
   // Writes need ManageFinancials unless a more specific permission handles them below.
   const extended = await extendedSchemeRoutes(req, res, s, rest, q, lang, user);
@@ -1790,9 +1910,14 @@ async function schemeRoutes(req, res, s, rest, q, lang, user) {
     });
   }
   if (m === "GET" && rest === "lots") {
+    // Like the API: a member sees every lot; `role` is their resident role in that lot, or null.
+    const pageSize = Math.min(Number(q.get("pageSize")) || 20, 500);
     return ok(
       res,
-      s.lots.map((l) => ({ ...l, role: "Owner" })),
+      s.lots.slice(0, pageSize).map((l) => ({
+        ...l,
+        role: (s.residents.get(l.id) ?? []).find((r) => r.userId === user)?.role ?? null,
+      })),
     );
   }
   if (m === "GET" && rest === "financial-health") return ok(res, financialHealth(s, lang));
@@ -2550,33 +2675,9 @@ async function backofficeRoutes(req, res, path, q, user) {
       s.lots.push(lot);
       return ok(res, { id: lot.id });
     }
-    if (sub === "members" && m === "GET") return ok(res, pageOf(s.members, q));
-    if (sub === "members" && m === "POST") {
-      const body = await readJson(req);
-      if (s.members.some((x) => x.userId === body.userId))
-        return fail(res, 409, "Conflict", "This user is already a member.");
-      const member = {
-        id: s.members.length + 1,
-        schemeId: s.id,
-        userId: String(body.userId),
-        role: fromEnum(E.schemeRole, body.role) ?? "ReadOnly",
-        status: "Active",
-        createdAt: nowUtc(),
-      };
-      s.members.push(member);
-      return ok(res, member);
-    }
-    if ((match = /^members\/([^/]+)(\/role)?$/.exec(sub ?? ""))) {
-      const member = s.members.find((x) => x.userId === match[1]);
-      if (!member) return notFound(res, "Member");
-      if (match[2] && m === "PUT") {
-        member.role = fromEnum(E.schemeRole, (await readJson(req)).role) ?? member.role;
-        return ok(res, member);
-      }
-      if (!match[2] && m === "DELETE") {
-        s.members = s.members.filter((x) => x !== member);
-        return ok(res);
-      }
+    if (sub === "members" || sub?.startsWith("members/")) {
+      const handled = await memberRoutes(req, res, s, sub, q, { panel: false, user });
+      if (handled !== NOT_HANDLED) return handled;
     }
     if ((match = /^lots\/(\d+)(?:\/(.+))?$/.exec(sub ?? ""))) {
       const lot = s.lots.find((l) => l.id === Number(match[1]));
@@ -2604,11 +2705,35 @@ async function backofficeRoutes(req, res, path, q, user) {
         return ok(res);
       }
       const residents = s.residents.get(lot.id) ?? [];
-      if (action === "residents" && m === "GET") return ok(res, residents);
+      if (action === "residents" && m === "GET")
+        return ok(
+          res,
+          residents.map((r, i) => {
+            const member = s.members.find((x) => x.userId === r.userId);
+            return {
+              id: lot.id * 1000 + i,
+              lotId: lot.id,
+              userId: r.userId,
+              role: r.role,
+              assignedAt: r.assignedAt ?? nowUtc(),
+              firstName: member?.firstName ?? null,
+              lastName: member?.lastName ?? null,
+              fullName: member?.fullName ?? null,
+              phoneNumber: member?.phoneNumber ?? null,
+            };
+          }),
+        );
       if (action === "residents" && m === "POST") {
         const body = await readJson(req);
         if (residents.some((r) => r.userId === body.userId))
           return fail(res, 409, "Conflict", "This user already lives in this lot.");
+        if (!s.members.some((x) => x.userId === body.userId && x.status === "Active"))
+          return fail(
+            res,
+            400,
+            "310008",
+            "The selected person is not an active member of this scheme.",
+          );
         s.residents.set(lot.id, [
           ...residents,
           { userId: String(body.userId), role: fromEnum(E.lotRole, body.role) ?? "Owner" },
@@ -2767,6 +2892,25 @@ const server = createServer(async (req, res) => {
 
     const user = claims(req);
     if (!user) return fail(res, 401, "Unauthorized", "Unauthorized");
+
+    // Both surfaces: the signed-in user's name (from any membership) and mobile.
+    if (req.method === "GET" && path === "users/me") {
+      const member = [...schemes.values()]
+        .flatMap((s) => s.members)
+        .find((m) => m.userId === user.sub && m.firstName);
+      const [firstName, lastName] =
+        user.sub === ADMIN_ID
+          ? ["Support", "Admin"]
+          : [member?.firstName ?? null, member?.lastName ?? null];
+      const fullName = `${firstName ?? ""} ${lastName ?? ""}`.trim() || null;
+      return ok(res, {
+        userId: user.sub,
+        phoneNumber: user.phone_number ?? null,
+        firstName,
+        lastName,
+        fullName,
+      });
+    }
 
     if (req.method === "GET" && path === "schemes/mine") {
       return ok(

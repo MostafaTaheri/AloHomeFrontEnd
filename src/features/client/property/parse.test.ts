@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { checkTransfer, datesInOrder, parseParty, parseShare } from "./parse";
+import { NOT_A_MEMBER } from "@/lib/api/members";
+import { checkTransfer, datesInOrder, parseParty, parseShare, partyFrom } from "./parse";
 
 describe("parseShare", () => {
   it("accepts shares above 0 up to 100 with two decimals", () => {
@@ -27,22 +28,34 @@ describe("parseParty", () => {
   });
 });
 
+describe("partyFrom", () => {
+  it("uses the picked member, or the typed name for someone without an account", () => {
+    expect(partyFrom({ choice: "u-1", name: "ignored" })).toEqual({ userId: "u-1" });
+    expect(partyFrom({ choice: NOT_A_MEMBER, name: "  J. Citizen " })).toEqual({
+      partyName: "J. Citizen",
+    });
+    expect(partyFrom({ choice: NOT_A_MEMBER, name: "  " })).toBeNull();
+    expect(partyFrom({ choice: "", name: "J. Citizen" })).toBeNull();
+  });
+});
+
 describe("checkTransfer", () => {
   it("builds the owners when every row is valid and shares total 100", () => {
     const result = checkTransfer([
-      { party: "A", share: "33.33" },
-      { party: "B", share: "33.33" },
-      { party: "C", share: "33.34" },
+      { party: { choice: "u-1", name: "" }, share: "33.33" },
+      { party: { choice: "u-2", name: "" }, share: "33.33" },
+      { party: { choice: NOT_A_MEMBER, name: " C " }, share: "33.34" },
     ]);
     expect(result.totalOk).toBe(true);
     expect(result.owners).toHaveLength(3);
+    expect(result.owners?.[0]).toEqual({ userId: "u-1", sharePercent: 33.33 });
     expect(result.owners?.[2]).toEqual({ partyName: "C", sharePercent: 33.34 });
   });
 
   it("reports the row error and a short total", () => {
     const result = checkTransfer([
-      { party: "", share: "50" },
-      { party: "B", share: "40" },
+      { party: { choice: "", name: "" }, share: "50" },
+      { party: { choice: "u-2", name: "" }, share: "40" },
     ]);
     expect(result.rows).toEqual(["party", null]);
     expect(result.total).toBe(90);

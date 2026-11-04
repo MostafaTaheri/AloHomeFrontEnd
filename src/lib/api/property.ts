@@ -9,6 +9,13 @@ import { LotRole } from "./finance/enums";
  */
 
 export type LotRoleName = "Owner" | "FamilyMember" | "Tenant" | "Occupant";
+/** Roles offered when adding someone to a lot, in display order; shared by the panel and the back office. */
+export const OCCUPANT_ROLES: readonly LotRoleName[] = [
+  "Tenant",
+  "Occupant",
+  "FamilyMember",
+  "Owner",
+];
 export type SchemeOfficeName =
   | "Chairperson"
   | "Secretary"
